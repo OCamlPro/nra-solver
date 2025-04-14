@@ -1,0 +1,11 @@
+# Dune build directory
+_build
+
+# Dune generated files
+*.install
+
+# Local OPAM switch
+_opam
+
+# Direnv local config
+.direnv
