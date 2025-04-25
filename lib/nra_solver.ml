@@ -35,3 +35,6 @@ let assert_geq _ _ _ = ()
 type solve_result = Sat | Unsat | Unknown
 
 let solve _ = Unknown
+
+module Covering = Covering
+module Real = Real 

@@ -2,4 +2,16 @@
  (package nra_solver)
  (public_name nra_solver)
  (name frontend)
- (libraries nra_solver cmdliner fmt dolmen dolmen_type dolmen_loop))
+ (modules frontend)
+ (libraries nra_solver cmdliner fmt dolmen dolmen_type dolmen_loop flint))
+
+(executable
+ (package nra_solver)
+ (public_name fichier)
+ (name fichier)
+ (modules fichier)
+ (libraries flint))
+
+(env
+  (dev
+    (flags (:standard -warn-error -A))))

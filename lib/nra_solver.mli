@@ -30,3 +30,6 @@ type solve_result =
           solver, so this should never happen once the project is complete. *)
 
 val solve : t -> solve_result
+
+module Covering : module type of Covering 
+module Real : module type of  Real 

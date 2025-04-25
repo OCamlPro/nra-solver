@@ -1,5 +1,6 @@
 (library
- (name nra_solver))
+ (name nra_solver)
+ (libraries flint))
 
 (env
   (dev
