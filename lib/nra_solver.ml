@@ -37,4 +37,4 @@ type solve_result = Sat | Unsat | Unknown
 let solve _ = Unknown
 
 module Covering = Covering
-module Real = Real 
+module Real = Real

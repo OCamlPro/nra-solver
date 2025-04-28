@@ -31,5 +31,5 @@ type solve_result =
 
 val solve : t -> solve_result
 
-module Covering : module type of Covering 
-module Real : module type of  Real 
+module Covering : module type of Covering
+module Real : module type of Real

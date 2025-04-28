@@ -1,5 +1,4 @@
 (test
  (name test_nra) ; A general name for the test suite
- (libraries nra_solver qcheck)
+ (libraries nra_solver qcheck fmt)
  (modules test_nra))
-  
