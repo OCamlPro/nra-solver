@@ -1,38 +1,142 @@
 open QCheck2
 module Covering = Nra_solver.Covering
-module Real = Nra_solver.Real 
+module Real = Nra_solver.Real
+
 let is_covering = Covering.is_covering
+let open_ x y = Covering.Open (Finite (Real.of_int x), Finite (Real.of_int y))
+let exact x = Covering.Exact (Real.of_int x)
+let finite x = Covering.Finite (Real.of_int x)
+let floor x = Z.to_int @@ Real.floor x
+let ceil x = Z.to_int @@ Real.ceil x
+let gen_real : Real.t Gen.t = Gen.map Real.of_int (Gen.int_range 0 100)
+let three = Real.of_int 3 
+
+let longueur_interval a b : bool=
+match a , b with
+|Covering.Finite a_val , Covering.Finite b_val -> Real.compare (Real.sub b_val a_val) three >= 0 
+|_-> true   
 
 
-let gen_real : Real.t  Gen.t  =
-Gen.map Real.of_int (Gen.int_range 0 100)
 
-let gen_bound : Covering.bound  Gen.t =
-  Gen.oneof [
-    (* Générer un Real.t aléatoire et l'envelopper dans Finite *)
-    Gen.map (fun n -> Covering.Finite n) gen_real;
-    Gen.pure Covering.Pinf;
-    Gen.pure Covering.Ninf;
-  ]
-let gen_exact : Covering.interval Gen.t = 
-  Gen.map (fun n -> Covering.Exact n) gen_real
+let gen_real_bound (low : Covering.bound) (high : Covering.bound) :
+    Covering.bound Gen.t =
+  match (low, high) with
+  | Covering.Finite a, Covering.Finite b when longueur_interval (Covering.Finite a) (Covering.Finite b)  ->
+      Gen.map finite (Gen.int_range (ceil a + 1) (floor b))
+  | Covering.Ninf, Covering.Finite a ->
+      Gen.map finite (Gen.int_range (-500) (floor a))
+  | Covering.Finite b, Covering.Pinf ->
+      Gen.map finite (Gen.int_range (ceil b) 500)
+  | Covering.Ninf, Covering.Pinf -> Gen.map finite (Gen.int_range (-500) 500)
+  | b1, b2 -> 
+    Fmt.failwith "There is no integer into (%a, %a)" Covering.pp_bound b1 Covering.pp_bound b2
+
+let gen_bound : Covering.bound Gen.t =
+  Gen.oneof
+    [
+      (* Générer un Real.t aléatoire et l'envelopper dans Finite *)
+      Gen.map finite (Gen.int_range 0 100);
+      Gen.pure Covering.Pinf;
+      Gen.pure Covering.Ninf;
+    ]
+
+let gen_exact (low : int) (high : int) : Covering.interval Gen.t =
+  Gen.map exact (Gen.int_range low high)
 
 let gen_interval : Covering.interval Gen.t =
-  Gen.oneof [
-    Gen.map (fun n -> Covering.Exact n) gen_real;
-    Gen.bind (Gen.pair gen_bound gen_bound) (fun (b1, b2) ->
-      if Covering.compare_bound b1 b2 < 0 then
-        Gen.pure (Covering.Open (b1, b2))
-      else
-        Gen.map (fun n -> Covering.Exact n) gen_real
-    ); 
+  Gen.oneof
+    [
+      Gen.map exact (Gen.int_range 0 100);
+      Gen.bind (Gen.pair gen_bound gen_bound) (fun (b1, b2) ->
+          if Covering.compare_bound b1 b2 < 0 then
+            Gen.pure (Covering.Open (b1, b2))
+          else Gen.map exact (Gen.int_range 0 100));
+    ]
 
-    
-  ]
-let is_good_covering = Covering.is_good_covering
+type interval_tree =
+  | Leaf of Covering.interval
+  | Node of interval_tree * Covering.interval * interval_tree
+
+let node x y z = Node (x, y, z)
+
+let gen_interval_tree : interval_tree Gen.t =
+  Gen.(
+    sized (fun fuel ->
+        fix
+          (fun self (fuel, low, high) ->
+            match fuel with
+            | 0 -> Gen.pure @@ Leaf (Covering.Open (low, high))
+            | n ->
+                if longueur_interval low high then
+                  bind (gen_real_bound low high) @@ fun b ->
+                  match b with
+                  | Covering.Finite b_val ->
+                      map3 node
+                        (self (n / 2, low, b))
+                        (pure @@ Covering.Exact b_val)
+                        (self (n / 2, b, high))
+                  | _ -> assert false
+                else Gen.pure @@ Leaf (Open (low, high)))
+          (fuel, Covering.Ninf, Covering.Pinf)))
+
+type interval_tree' =
+  | Leaff of Covering.interval
+  | Node2 of interval_tree' * interval_tree'
+  | Node3 of interval_tree' * Covering.interval * interval_tree'
+
+let node2 x y = Node2 (x, y)
+let node3 x y z = Node3 (x, y, z)
+
+let gen_interval_tree' : interval_tree' Gen.t =
+  Gen.(
+    sized (fun fuel ->
+        fix
+          (fun self' (fuel, low, high) ->
+            match fuel with
+            | 0 -> Gen.pure @@ Leaff (Covering.Open (low, high))
+            | n ->
+                frequency
+                  [
+                    ( 1,
+                      if longueur_interval low high  then
+                        bind (gen_real_bound low high) @@ fun b ->
+                        bind (gen_real_bound b high) @@ fun c ->
+                        map2 node2
+                          (self' (n / 2, low, c))
+                          (self' (n / 2, b, high))
+                      else Gen.pure @@ Leaff (Open (low, high)) );
+                    ( 2,
+                      if longueur_interval low high  then
+                        bind (gen_real_bound low high) @@ fun b ->
+                        match b with
+                        | Covering.Finite b_val ->
+                            map3 node3
+                              (self' (n / 2, low, b))
+                              (pure @@ Covering.Exact b_val)
+                              (self' (n / 2, b, high))
+                        | _ -> assert false
+                      else Gen.pure @@ Leaff (Open (low, high)) );
+                  ])
+          (fuel, Covering.Ninf, Covering.Pinf)))
+
+
+let  rec fringe_tree (t: interval_tree) : Covering.interval list =
+  match t with 
+  |Leaf x ->  [x]
+  |Node (t1, y, t2) -> fringe_tree t1 @ [y] @ fringe_tree t2
+
+
+
+let gen_good_covering2 : Covering.interval list Gen.t = 
+  Gen.bind gen_interval_tree ( fun t -> Gen.pure (fringe_tree t ) )
+
    
 
-let compute_good_covering  = Covering.compute_good_covering
+
+
+
+let is_good_covering = Covering.is_good_covering
+let compute_good_covering = Covering.compute_good_covering
 
 (* --- Generators --- *)
 (* QCheck needs generators to create random test inputs.
@@ -40,38 +144,39 @@ let compute_good_covering  = Covering.compute_good_covering
    This is often the most challenging part of setting up PBT.
    For now, we use a simple placeholder. *)
 
+let pp_bound ppf b =
+  match b with
+  | Covering.Finite b -> Format.fprintf ppf "%a" Real.pp b
+  | Covering.Pinf -> Format.fprintf ppf "+oo"
+  | Covering.Ninf -> Format.fprintf ppf "-oo"
 
-  let pp_bound ppf b =
-    match b with
-    | Covering.Finite b -> Format.fprintf ppf "%a" Real.pp b
-    | Covering.Pinf -> Format.fprintf ppf "+oo"
-    | Covering.Ninf -> Format.fprintf ppf "-oo"
-  
-  
-  let pp_interval ppf i =
-    match i with
-    | Covering.Open (b1, b2) -> Format.fprintf ppf "(%a, %a)" pp_bound b1 pp_bound b2
-    | Exact b -> Format.fprintf ppf "{%a}" Real.pp b
-  
+let pp_interval ppf i =
+  match i with
+  | Covering.Open (b1, b2) ->
+      Format.fprintf ppf "(%a, %a)" pp_bound b1 pp_bound b2
+  | Exact b -> Format.fprintf ppf "{%a}" Real.pp b
 
 let pp_intervals ppf l =
   let pp_sep ppf () = Format.fprintf ppf "∪" in
   Format.pp_print_list ~pp_sep pp_interval ppf l
 
 let gen_sorted_list (n : int) : Real.t list Gen.t =
-  Gen.bind (Gen.list_size (Gen.pure n) gen_real)
-    (fun l -> Gen.pure (List.sort_uniq Real.compare  l))
-
+  Gen.bind
+    (Gen.list_size (Gen.pure n) gen_real)
+    (fun l -> Gen.pure (List.sort_uniq Real.compare l))
 
 let build_intervals l =
   let rec loop acc l =
     match l with
     | a :: c :: b :: d :: l ->
-      loop (Covering.Open (Finite c, Finite d) :: Covering.Open (Finite a, Finite b) :: acc)
-        (b :: d :: l)
-    | e :: _ :: _ ->  (Covering.Open (Finite e, Pinf) :: acc )
-    |_ ->  assert false
-         in
+        loop
+          (Covering.Open (Finite c, Finite d)
+          :: Covering.Open (Finite a, Finite b)
+          :: acc)
+          (b :: d :: l)
+    | e :: _ :: _ -> Covering.Open (Finite e, Pinf) :: acc
+    | _ -> assert false
+  in
   let result = List.rev (loop [] l) in
   match result with
   | Covering.Open (_, b) :: rest -> Covering.Open (Ninf, b) :: rest
@@ -85,30 +190,23 @@ let gen_good_covering (n : int) : Covering.interval list Gen.t =
   let pp_sep ppf () = Format.fprintf ppf "\n" in
   Format.printf "%a\n@." (Format.pp_print_list ~pp_sep pp_intervals) l *)
 
-let print_covering (c : Covering.interval list) = 
+let print_covering (c : Covering.interval list) =
   Format.asprintf "%a" Covering.pp_intervals c
 
-
-
-  let test_is_good_covering =
-    Test.make
-      ~print:print_covering
-      ~count:1000
-      ~name:__FUNCTION__
-       (gen_good_covering 3)
-         
-      is_good_covering 
+let test_is_good_covering =
+  Test.make ~print:print_covering ~count:1000 ~name:__FUNCTION__
+    (gen_good_covering 3) is_good_covering
+  
+let test_is_good_covering2 =
+  Test.make ~print:print_covering ~count:1000 ~name:__FUNCTION__
+    (gen_good_covering2 ) is_good_covering
+    
 
 let test_compute_good_covering_identity =
-  Test.make 
-    ~print: print_covering
-    ~count: 1000
-    ~name: "compute_good_covering_identity"
-     (gen_good_covering 10 ) (fun c -> 
+  Test.make ~print:print_covering ~count:1000
+    ~name:"compute_good_covering_identity" (gen_good_covering 10) (fun c ->
       let d = compute_good_covering c in
-      List.equal Covering.equal_interval c d
-      )
-      
+      List.equal Covering.equal_interval c d)
 
 (* --- Properties to Test --- *)
 
@@ -144,9 +242,14 @@ let test_compute_good_covering_identity =
 
 (* --- Test Suite --- *)
 (* Group all the tests together *)
-let covering_suite = [ test_is_good_covering; test_compute_good_covering_identity (* test_compute_good_is_valid; test_compute_good_is_good *) ]
+let covering_suite =
+  [
+    test_is_good_covering;
+    test_compute_good_covering_identity;
+    test_is_good_covering2
+    (* test_compute_good_is_valid; test_compute_good_is_good *);
+  ]
 
 (* --- Run Tests --- *)
 (* This line registers the suite to be run by the dune runner *)
-let () = QCheck_base_runner.run_tests_main covering_suite 
-
+let () = QCheck_base_runner.run_tests_main covering_suite
