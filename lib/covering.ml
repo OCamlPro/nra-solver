@@ -36,17 +36,42 @@ let compare_inter (i1 : interval) (i2 : interval) : int =
   | _, Open (Pinf, _) -> -1
   | Exact a, Exact b -> if a < b then -1 else if a = b then 0 else -1
 
-(*let  compare_inter (i1 : interval)(i2 : interval) : int =
-  match i1, i2 with
-  |Open(a,b), Open(c, d) when compare_bound a c = 0 -> compare_bound d b
-  |Open(a,b), Open(c, d) -> compare_bound a c  
-  |Exact a , Exact b -> if a < b then -1 else if a=b then 0 else -1
-  |Exact a , Open(b,c) -> if compare_bound b (Finite a)  <= 0 && compare_bound  (Finite a) c <= 0  then 1 else compare_bound (Finite a) b
-  |Open(b,c) , Exact a-> if compare_bound b (Finite a)  <= 0 && compare_bound  (Finite a) c <= 0  then -1 else compare_bound b (Finite a)
-    *)
+let compare_inter1 (i1 : interval) (i2 : interval) : int =
+  match (i1, i2) with
+  | Open (a, b), Open (c, d) when compare_bound a c = 0 -> compare_bound d b
+  | Open (a, _), Open (c, _) -> compare_bound a c
+  | Exact a, Exact b -> Real.compare a b
+  | Exact a, Open (b, c) ->
+      if compare_bound b (Finite a) <= 0 && compare_bound (Finite a) c <= 0 then
+        1
+      else compare_bound (Finite a) b
+  | Open (b, c), Exact a ->
+      if compare_bound b (Finite a) <= 0 && compare_bound (Finite a) c <= 0 then
+        -1
+      else compare_bound b (Finite a)
 
 let sort_intervals (intervals : interval list) : interval list =
   List.sort compare_inter intervals
+
+let sort_intervals1 (intervals : interval list) : interval list =
+  List.sort compare_inter1 intervals
+
+let one = Real.of_int 1
+let mone = Real.of_int (-1)
+let zero = Real.of_int 0
+let five = Real.of_int 5
+let eight = Real.of_int 8
+
+let l =
+  sort_intervals1
+    [
+      Open (Ninf, Finite one);
+      Open (Finite mone, Finite zero);
+      Exact eight;
+      Open (Finite one, Pinf);
+      Exact one;
+      Exact five;
+    ]
 
 let is_covering l =
   let rec loop_open c l =
