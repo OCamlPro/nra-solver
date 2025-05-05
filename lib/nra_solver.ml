@@ -38,3 +38,4 @@ let solve _ = Unknown
 
 module Covering = Covering
 module Real = Real
+module Constraint = Constraint

@@ -1,6 +1,6 @@
 (library
  (name nra_solver)
- (libraries flint))
+ (libraries flint fmt zarith))
 
 (env
  (dev
