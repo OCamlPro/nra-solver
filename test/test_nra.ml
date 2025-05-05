@@ -2,6 +2,120 @@ open QCheck2
 module Covering = Nra_solver.Covering
 module Real = Nra_solver.Real
 
+type bound = Finite of int | Pinf | Ninf
+
+let int_range_exclusive l u : int option Gen.t =
+  let l' = l + 1 in
+  let u' = u - 1 in
+  if u' - l' > 1 then Gen.map Option.some (Gen.int_range l' u')
+  else Gen.pure None
+
+let fake_ninf = -500
+let fake_pinf = 500
+
+let bound_to_int b =
+  match b with
+  | Finite i -> min fake_pinf (max fake_ninf i)
+  | Pinf -> fake_pinf
+  | Ninf -> fake_ninf
+
+let sample_interval b1 b2 : int option Gen.t =
+  int_range_exclusive (bound_to_int b1) (bound_to_int b2)
+
+type interval = Open of bound * bound | Exact of int
+
+let to_covering_bound b =
+  match b with
+  | Finite i -> Covering.Finite (Real.of_int i)
+  | Pinf -> Covering.Pinf
+  | Ninf -> Covering.Ninf
+
+let to_covering_interval i =
+  match i with
+  | Open (l, u) -> Covering.Open (to_covering_bound l, to_covering_bound u)
+  | Exact a -> Covering.Exact (Real.of_int a)
+
+type tactic = bound -> bound -> interval list Gen.t
+
+let trivial l u = Gen.pure [ Open (l, u) ]
+
+let split l u =
+  Gen.map
+    (fun o ->
+      match o with
+      | Some m -> [ Open (l, Finite m); Exact m; Open (Finite m, u) ]
+      | None -> [ Open (l, u) ])
+    (sample_interval l u)
+
+let basile l u =
+  Gen.map
+    (fun o ->
+      match o with
+      | Some m -> [ Open (l, Finite m); Open (l, u) ]
+      | None -> [ Open (l, u) ])
+    (sample_interval l u)
+
+type itree = Lf of interval | Br of itree list
+
+let lf x = Lf x
+let br l = Br l
+
+let fringe t =
+  let rec loop acc t =
+    match t with Lf i -> i :: acc | Br l -> List.fold_left loop acc l
+  in
+  loop [] t |> List.rev
+
+let generator_itree (tactics : (int * tactic) list) l u : itree Gen.t =
+  Gen.(
+    sized_size (pure 15) (fun fuel ->
+        fix
+          (fun self (fuel, l, u) ->
+            match fuel with
+            | 0 -> pure @@ lf (Open (l, u))
+            | n ->
+                bind (frequencyl tactics) @@ fun tactic ->
+                bind (tactic l u) @@ fun ix ->
+                let fuel =
+                  let n = List.length ix in
+                  if n = 1 then fuel - 1 else fuel / n
+                in
+                let g =
+                  List.map
+                    (fun (i : interval) ->
+                      match i with
+                      | Open (a, b) -> self (fuel, a, b)
+                      | Exact _ as i -> pure @@ lf i)
+                    ix
+                in
+                map br (flatten_l g))
+          (fuel, l, u)))
+
+let generator_covering (tactics : (int * tactic) list) :
+    Covering.interval list Gen.t =
+  Gen.map
+    (fun t -> List.map to_covering_interval @@ fringe t)
+    (generator_itree tactics Ninf Pinf)
+
+let gen1 = generator_covering [ (1, split) ]
+let gen2 = generator_covering [ (1, split); (3, basile) ]
+
+let print_covering (c : Covering.interval list) =
+  Format.asprintf "%a" Covering.pp_debug_intervals c
+
+let test_basile =
+  Test.make ~print:print_covering ~count:1000 ~name:__FUNCTION__ gen2 (fun c ->
+      let d = Covering.compute_good_covering c in
+      Covering.is_good_covering d)
+
+(* Group all the tests together *)
+let covering_suite = [ test_basile ]
+
+(* --- Run Tests --- *)
+(* This line registers the suite to be run by the dune runner *)
+let () = QCheck_base_runner.run_tests_main covering_suite
+
+(*
 let is_covering = Covering.is_covering
 let open_ x y = Covering.Open (Finite (Real.of_int x), Finite (Real.of_int y))
 let exact x = Covering.Exact (Real.of_int x)
@@ -11,31 +125,55 @@ let ceil x = Z.to_int @@ Real.ceil x
 let gen_real : Real.t Gen.t = Gen.map Real.of_int (Gen.int_range 0 100)
 let three = Real.of_int 3
 
-
-
-let to_int b =
-  match b with 
-  | Covering.Finite b -> if floor b <= 500 && floor b >= (-500) then floor b else if ceil b > 500 then 500 else -500
-  | Covering.Pinf -> 500 
-  | Covering.Ninf ->  -500  
+ 
 
 let longueur_interval a b : bool =
   match (a, b) with
   | Covering.Finite a_val, Covering.Finite b_val ->
       Real.compare (Real.sub b_val a_val) three >= 0
-  | _ -> true
+  | _ -> true 
 
 
-  let longueur_interval' a b : bool =
-    if (to_int a + 1) - (to_int b -1 ) > 1 then true else false 
+(*************************************************************************)
+  let inter = Covering.inter 
+  let length = Covering.length  
+  
 
-    let gen_real_bound' (low : Covering.bound) (high : Covering.bound) :
-      Covering.bound option Gen.t =
-  if longueur_interval' low high then
-    Gen.map (fun i -> Some (finite i)) (Gen.int_range (to_int low) (to_int high))
+let length_inter_500  (i : Covering.interval) =  
+ match inter i (Open (finite (-500) , finite (500))) with 
+ |Some j -> length j 
+ |None -> Real.of_int 0
+
+  let assez_grand (a : Real.t) (b : Real.t) : bool
+   = Real.compare (length_inter_500 (Covering.Open (Finite a , Finite b)) ) (Real.of_int 1) >= 1
+    
+let to_real b = 
+  match b with 
+  |Covering.Finite a -> a 
+  |Pinf -> Real.of_int 500
+  |Ninf -> Real.of_int (-500)
+
+  let fake_ninf = -500 
+  let fake_pinf = 500
+
+  let gen_real : Real.t Gen.t = 
+    Gen.map Real.of_int (Gen.int_range fake_ninf fake_pinf)
+
+  let real_range (low : Covering.bound) (high : Covering.bound) : Real.t option Gen.t =
+    match low, high with 
+    | Ninf, Pinf -> 
+      Gen.map Option.some gen_real 
+    | Ninf, Finite b when Real.compare b (Real.of_int fake_ninf) >= 0 -> 
+      Gen.int_range fake_ninf 
+
+      let ilow = Real.Syntax.(to_real low + ~$1) in
+      let ihigh = Real.Syntax.(to_real high - ~$1) in
+
+  if assez_grand low high then
+    Gen.map (fun i -> Some (finite i)) (Gen.int_range (ceil (to_real low) + 1) (floor (to_real high) - 1))
   else
     Gen.pure None
-
+(**********************************************************************************)
 let gen_real_bound (low : Covering.bound) (high : Covering.bound) :
     Covering.bound Gen.t =
   match (low, high) with
@@ -109,33 +247,6 @@ let node3 x y z = Node3 (x, y, z)
 let leaff_open x y = Leaff (Covering.Open (x, y))
 
 (*""""""""""""""""""""""""""""""" genere good coverings"""""""""""""""""""""""""""""""""""""""""""*)
-let gen_good_interval_tree' : interval_tree' Gen.t =
-  Gen.(
-    sized (fun fuel ->
-        fix
-          (fun self' (fuel, low, high) ->
-            match fuel with
-            | 0 ->
-                if longueur_interval low high then
-                  bind (gen_real_bound low high) @@ fun b ->
-                  if longueur_interval b high then
-                    bind (gen_real_bound b high) @@ fun c ->
-                    pure (node2 (leaff_open low c) (leaff_open b high))
-                  else Gen.pure @@ Leaff (Open (low, high))
-                else Gen.pure @@ Leaff (Open (low, high))
-            | n ->
-                if longueur_interval low high then
-                  bind (gen_real_bound low high) @@ fun b ->
-                  match b with
-                  | Covering.Finite b_val ->
-                      map3 node3
-                        (self' (n / 2, low, b))
-                        (pure @@ Covering.Exact b_val)
-                        (self' (n / 2, b, high))
-                  | _ -> assert false
-                else Gen.pure @@ Leaff (Open (low, high)))
-          (fuel, Covering.Ninf, Covering.Pinf)))   
-(**************************************************************************************************)
 let gen_good_interval_tree'' : interval_tree' Gen.t =
   Gen.(
     sized (fun fuel ->
@@ -167,7 +278,7 @@ let gen_good_interval_tree'' : interval_tree' Gen.t =
           (fuel, Covering.Ninf, Covering.Pinf)))   
 (*""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""*)
 (*"""""""""""""""""""""""""""""" genere des coverings """"""""""""""""""""""""""""""""""""*)
-let gen_interval_tree' : interval_tree' Gen.t =
+let gen_interval_tree1 : interval_tree' Gen.t =
   Gen.(
     sized (fun fuel ->
         fix
@@ -178,44 +289,7 @@ let gen_interval_tree' : interval_tree' Gen.t =
                 frequency
                   [
                     ( 1,
-                      if longueur_interval low high then
-                        bind (gen_real_bound low high) @@ fun b ->
-                        if longueur_interval b high then
-                          bind (gen_real_bound b high) @@ fun c ->
-                          map2 node2
-                            (self' (n / 2, low, c))
-                            (self' (n / 2, b, high))
-                        else Gen.pure @@ Leaff (Covering.Open (low, high))
-                      else Gen.pure @@ Leaff (Open (low, high)) );
-                    ( 2,
-                      if longueur_interval low high then
-                        bind (gen_real_bound low high) @@ fun b ->
-                        match b with
-                        | Covering.Finite b_val ->
-                            map3 node3
-                              (self' (n / 2, low, b))
-                              (pure @@ Covering.Exact b_val)
-                              (self' (n / 2, b, high))
-                        | _ -> assert false
-                      else Gen.pure @@ Leaff (Open (low, high)) );
-                  ])
-          (fuel, Covering.Ninf, Covering.Pinf)))
-
-(************************************************************************************)
-
-
-let gen_interval_tree'' : interval_tree' Gen.t =
-  Gen.(
-    sized (fun fuel ->
-        fix
-          (fun self' (fuel, low, high) ->
-            match fuel with
-            | 0 -> Gen.pure @@ Leaff (Covering.Open (low, high))
-            | n ->
-                frequency
-                  [
-                    ( 1,
-                      if longueur_interval' low high then
+                      
                         bind (gen_real_bound' low high) @@ fun b ->
                         (match b with 
                           |Some b_bound  ->
@@ -227,7 +301,7 @@ let gen_interval_tree'' : interval_tree' Gen.t =
                             (self' (n / 2, b_bound, high))
                             |None -> Gen.pure @@ Leaff (Covering.Open (low, high)) )
                           |None ->  Gen.pure @@ Leaff (Covering.Open (low, high))   )
-                      else Gen.pure @@ Leaff (Open (low, high)) );
+                        );
                     ( 2,
                         bind (gen_real_bound' low high) @@ fun b -> 
                         (match b with 
@@ -245,6 +319,56 @@ let gen_interval_tree'' : interval_tree' Gen.t =
                   ])
           (fuel, Covering.Ninf, Covering.Pinf)))
 
+(*****************************gen coverings 2*******************************************************)
+let gen_interval_tree2 : interval_tree' Gen.t =
+  Gen.(
+    sized (fun fuel ->
+        fix
+          (fun self' (fuel, low, high) ->
+            match fuel with
+            | 0 -> Gen.pure @@ Leaff (Covering.Open (low, high))
+            | n ->
+                frequency
+                  [
+                    ( 0,
+                      
+                        bind (gen_real_bound' low high) @@ fun b ->
+                        (match b with 
+                          |Some b_bound  ->
+                          bind (gen_real_bound' b_bound high) @@ fun c ->
+                            (match c with 
+                            |Some c_val -> 
+                          map2 node2
+                            (self' (n / 2, low, c_val ))
+                            (self' (n / 2, b_bound, high))
+                            |None -> Gen.pure @@ Leaff (Covering.Open (low, high)) )
+                          |None ->  Gen.pure @@ Leaff (Covering.Open (low, high))   )
+                        );
+                    ( 0,
+                        bind (gen_real_bound' low high) @@ fun b -> 
+                        (match b with 
+                         |Some b_bound -> 
+                            (match b_bound with
+                            | Covering.Finite b_val ->
+                            map3 node3
+                              (self' (n / 2, low, b_bound))
+                              (pure @@ Covering.Exact b_val)
+                              (self' (n / 2, b_bound, high))
+                            | _ -> assert false)
+                          |None -> Gen.pure @@ Leaff (Open (low, high))  )  );
+                      (3,
+                        bind (gen_real_bound' low high) @@ fun b ->
+                        match b with 
+                         |Some b_bound ->
+                          map2 node2 
+                          (self' (n /2, low, b_bound))
+                          (self' (n / 2 , low, high)) 
+                        |None -> Gen.pure @@ Leaff (Open (low, high))
+                          
+                                                                  );    
+                  ])
+          (fuel, Covering.Ninf, Covering.Pinf)))
+
 (***************************************************************************************************)
 let rec fringe_tree (t : interval_tree') : Covering.interval list =
   match t with
@@ -256,7 +380,13 @@ let gen_good_covering2 : Covering.interval list Gen.t =
   Gen.bind gen_good_interval_tree'' (fun t -> Gen.pure (fringe_tree t))
 
 let gen_coverings : Covering.interval list Gen.t =
-  Gen.bind gen_interval_tree'' (fun t -> Gen.pure (fringe_tree t))
+  Gen.bind gen_interval_tree2 (fun t -> Gen.pure (fringe_tree t))
+
+
+  let sample_covering : Covering.interval list = Gen.generate1 gen_coverings
+
+  
+  
 
 let is_good_covering = Covering.is_good_covering
 let compute_good_covering = Covering.compute_good_covering
@@ -343,11 +473,13 @@ let test_compute_good_covering_identity2 =
       List.equal Covering.equal_interval c d)
 
 let test_compute_good_covering =
-  Test.make ~print:print_covering ~count:1000
+  Test.make ~print:print_covering ~count:10000
     ~name:"compute_good_covering_identity" gen_coverings (fun c ->
       let d = compute_good_covering c in
       is_good_covering d)
 (**********************************************************************************************)
+
+
 
 (* --- Properties to Test --- *)
 
@@ -390,10 +522,11 @@ let covering_suite =
     test_is_good_covering2;
     test_is_covering;
     (*test_compute_good_covering_identity2;*)
-    test_compute_good_covering
+    (*test_compute_good_covering*)
     (*test_compute_good_is_valid; test_compute_good_is_good *)
   ]
 
 (* --- Run Tests --- *)
 (* This line registers the suite to be run by the dune runner *)
 let () = QCheck_base_runner.run_tests_main covering_suite
+*)
