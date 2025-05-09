@@ -64,11 +64,17 @@ module Z_poly = struct
   let pp _ = assert false
 end
 
-type sigma = Egal | Inferieur
+type sigma = Egal | Less
 type polyn = Z_poly.t array
 type contraint = polyn * sigma
 
-let morph_poly (c : contraint) (s : Real.t array) : Real.Poly.t =
+let is_poly_nul (c : contraint) (s : Real.t array) : bool =
+  let p, _ = c in
+  let arr = Array.map (fun poly -> Z_poly.evaluate_polynome poly s) p in
+  Array.for_all (fun x -> Real.compare x (Real.of_int 0) = 0) arr
+
+
+let specialize_poly (c : contraint) (s : Real.t array) : Real.Poly.t =
   let p, _ = c in
   let arr = Array.map (fun poly -> Z_poly.evaluate_polynome poly s) p in
   Real.Poly.create arr
@@ -82,23 +88,33 @@ let array_filtrer (arr : Real.t array) (f : Real.t -> bool) : Real.t array =
       incr j)
   done;
   Array.sub arr 0 !j
+let sorts_array (arr : Real.t array) : Real.t array =
+  let copie = Array.copy arr in
+  Array.sort Real.compare copie;
+  copie
 
 let real_roots (p : Real.Poly.t) : Real.t array =
   let l = Real.Poly.roots p in
-  array_filtrer l Real.is_real
+  let l' = array_filtrer l Real.is_real in 
+  sorts_array l'
+  
 
 let num_roots (p : Real.Poly.t) : int = Array.length (real_roots p)
 
-let evaluate_contraint ((arr_p, s') : contraint) (s : Real.t array) (r : Real.t)
-    =
+let evaluate_contraint ((arr_p, s') : contraint) (s : Real.t array) (r : Real.t) =
   let c = (arr_p, s') in
+  if (is_poly_nul c s) then 
+    match s' with 
+    |Egal -> true 
+    |Less -> false 
+else 
   match s' with
   | Egal ->
-      let p = morph_poly c s in
+      let p = specialize_poly c s in
       if Real.compare (Real.Poly.evaluate p r) (Real.of_int 0) = 0 then true
       else false
-  | Inferieur ->
-      let p = morph_poly c s in
+  | Less ->
+      let p = specialize_poly c s in
       if Real.compare (Real.Poly.evaluate p r) (Real.of_int 0) < 0 then true
       else false
 
@@ -126,9 +142,14 @@ let get_unsat_intervals (c : contraint array) (s : Real.t array) :
   let rec loop i acc =
     if i < 0 then acc
     else
-      let p = morph_poly c.(i) s in
+    if (is_poly_nul c.(i) s) then 
+      (let b = evaluate_contraint c.(i) s (Real.of_int 1) in
+      if not b then [ Covering.Open (Covering.Ninf, Covering.Pinf) ]
+      else loop (i - 1) acc)
+    else 
+      let p = specialize_poly c.(i) s in
       let roots = real_roots p in
-      if Array.length roots = 0 then
+      if (Array.length roots = 0)  then
         let b = evaluate_contraint c.(i) s (Real.of_int 1) in
         if not b then [ Covering.Open (Covering.Ninf, Covering.Pinf) ]
         else loop (i - 1) acc
@@ -158,6 +179,19 @@ let get_unsat_intervals (c : contraint array) (s : Real.t array) :
     !intervals
   with Break l -> l*)
 
+
+  let mk_poly (specs : (int * int) list) : Z_poly.t =
+    Z_poly.M.of_list (List.map (fun (d, c) -> ([| d |], Z.of_int c)) specs)
+  
+  let mk_constraint (poly_specs : (int * int) list array) (sigma : sigma) : contraint =
+    (Array.map mk_poly poly_specs, sigma)
+  
+  let c4 = mk_constraint [| [(2, 1); (0, 4)]; [(0, 4)] |] Less
+  let c2 = mk_constraint [| [(2, -1); (1, 2); (0, 3)]; [(0, -4)] |] Less
+  let c3 = mk_constraint [| [(1, 1); (0, 2)]; [(0, -4)] |] Less
+  
+  let c_array = [| c1 ; c2 ; c3 |]
+  
 let p1c1 : Z_poly.t =
   Z_poly.M.of_list [ ([| 2 |], Z.of_int 1); ([| 0 |], Z.of_int (-4)) ]
 
@@ -166,6 +200,24 @@ let p2c1 : Z_poly.t = Z_poly.M.of_list [ ([| 0 |], Z.of_int 4) ]
 let p1c2 : Z_poly.t =
   Z_poly.M.of_list
     [ ([| 2 |], Z.of_int (-1)); ([| 1 |], Z.of_int 2); ([| 0 |], Z.of_int 3) ]
+
+let p2c2 : Z_poly.t = Z_poly.M.of_list [ ([| 0 |], Z.of_int (-4)) ]
+
+let p1c3 : Z_poly.t =
+  Z_poly.M.of_list [ ([| 1 |], Z.of_int 1); ([| 0 |], Z.of_int (2)) ]
+
+let p2c3 : Z_poly.t = Z_poly.M.of_list [ ([| 0 |], Z.of_int (-4)) ]
+
+let c1 = ([| p1c1 ; p2c1|], Less) 
+let c2 = ([| p1c2 ; p2c2|], Less)
+let c3 = ([| p1c3 ; p2c3|], Less)
+
+
+let c_array = [| c1 ; c2 ; c3|] 
+
+let result = get_unsat_intervals c_array [|Real.of_int 0|]
+
+
 
 (*#######"#"#"#"##"##"#*************************************************************************)
 (*#######"#"#"#"##"##"#*************************************************************************)

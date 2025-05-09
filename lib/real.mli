@@ -43,5 +43,5 @@ module Poly : sig
   val sub : t -> t -> t
   val roots : t -> real array
   val to_string : t -> string
-  val pp : t -> Format.formatter -> t -> unit
+  val pp : Format.formatter -> t -> unit
 end
