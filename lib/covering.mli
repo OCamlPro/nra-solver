@@ -17,6 +17,7 @@ val is_covering : interval list -> bool
 val is_good_covering : interval list -> bool
 val compute_good_covering : interval list -> interval list
 val sample_outside : interval list -> Real.t option
+val sample_interval :bound -> bound -> Real.t  
 val compare_interval : interval -> interval -> int
 val equal_interval : interval -> interval -> bool
 val sort_intervals1 : interval list -> interval list
@@ -28,5 +29,5 @@ val length : interval -> Real.t
 val inter : interval -> interval -> interval option
 (** [inter i1 i2] computes the intersection of [i1] and [i2]. Returns [None] if
     the intersection is empty. *)
-val pointsToIntervals : Real.t list -> interval list
-
+val pointsToIntervals : Real.t array -> interval list
+val pointsToIntervals2 : Real.t list -> interval list 

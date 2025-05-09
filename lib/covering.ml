@@ -437,18 +437,31 @@ let pp_poly ppf l =
   let pp_sep ppf () = Format.fprintf ppf "+" in
   Format.pp_print_list ~pp_sep pp_monome ppf l
 
-let pointsToIntervals (l: Real.t list ) : interval list =
-  let arr = Array.of_list l in 
-  let n = List.length l in 
-  if n = 0 then [] else 
-  let l' = ref [Open ( Ninf , Finite arr.(0) ) ; Exact(arr.(0))] in 
-  for i=1 to n-1 do 
-    l' :=   Exact (arr.(i)) :: Open (Finite arr.(i - 1) , Finite arr.(i)) :: !l' 
-  done;
-    l' := Open ( Finite arr.(n-1) , Pinf) :: !l';
-    List.rev !l' 
+let pointsToIntervals (arr : Real.t array) : interval list =
+  let n = Array.length arr in
+  if n = 0 then []
+  else
+    let l' = ref [ Open (Ninf, Finite arr.(0)); Exact arr.(0) ] in
+    for i = 1 to n - 1 do
+      l' := Exact arr.(i) :: Open (Finite arr.(i - 1), Finite arr.(i)) :: !l'
+    done;
+    l' := Open (Finite arr.(n - 1), Pinf) :: !l';
+    List.rev !l'
 
+let pointsToIntervals2 l =
+  let rec list_interval l' =
+    match l' with
+    | [] -> []
+    | [ c ] -> [ Open (Finite c, Pinf) ]
+    | a :: b :: l1 ->
+        Open (Finite a, Finite b) :: Exact b :: list_interval (b :: l1)
+  in
+  let l2 = list_interval l in
+  match l2 with
+  | Open (Finite a, Finite b) :: l ->
+      Open (Ninf, Finite a) :: Exact a :: Open (Finite a, Finite b) :: l
+  | [] -> []
+  | _ -> assert false
 
-
-let b = pointsToIntervals [Real.Syntax.(~$1) ; Real.Syntax.(~$4) ; Real.Syntax.(~$7)];;
-
+let b =
+  pointsToIntervals2 [ Real.Syntax.(~$1); Real.Syntax.(~$4); Real.Syntax.(~$7) ]

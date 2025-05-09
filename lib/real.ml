@@ -1,13 +1,32 @@
 module CA = Flint.CA
 
-type t = CA.t
-
 let ctx = CA.CTX.mk ()
+
+module Poly = struct
+  module P = Flint.CA_poly
+
+  type t = P.t
+
+  let create = P.create ~ctx
+  let evaluate = P.evaluate ~ctx
+  let add = P.add ~ctx
+  let mul = P.mul ~ctx
+  let pp = P.pp ~ctx
+  let sub = P.sub ~ctx
+  let roots = P.roots ~ctx
+  let to_string = P.to_string ~ctx
+end
+
+type t = CA.t
+type real = t
+
 let pp = CA.pp ~ctx
+let is_real = CA.is_real ~ctx
 let show = Fmt.to_to_string pp
 let floor = CA.floor ~ctx
 let ceil = CA.ceil ~ctx
 let of_int = CA.of_int ~ctx
+let of_z = CA.of_z ~ctx
 let pow = CA.pow ~ctx
 let to_q = CA.to_q ~ctx
 let neg = CA.neg ~ctx
