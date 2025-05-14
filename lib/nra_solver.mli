@@ -34,3 +34,4 @@ val solve : t -> solve_result
 module Covering : module type of Covering
 module Real : module type of Real
 module Constraint : module type of Constraint
+module Z_poly : module type of Z_poly

@@ -1,23 +1,3 @@
-module Index = struct
-  type t = int array
-
-  exception Break of int
-
-  let compare (l1 : t) (l2 : t) : int =
-    let n = Array.length l1 in
-    let m = Array.length l2 in
-    let c = Int.compare n m in
-    if c <> 0 then c
-    else
-      try
-        for i = 0 to n - 1 do
-          let c = Int.compare l1.(i) l2.(i) in
-          if c <> 0 then raise (Break c)
-        done;
-        0
-      with Break c -> c
-end
-
 let rec mult (l : Real.t list) : Real.t =
   match l with
   | [] -> Real.of_int 1
@@ -25,58 +5,35 @@ let rec mult (l : Real.t list) : Real.t =
       Format.printf "%a@." Real.pp x;
       Real.mul (mult l) x
 
-module Z_poly = struct
-  module M = Map.Make (Index)
-
-  type t = Z.t M.t
-
-  (** 17x^2 y + 3y + 5 *)
-  let _ : t =
-    M.of_list
-      [
-        ([| 0; 1 |], Z.of_int 3);
-        ([| 2; 1 |], Z.of_int 17);
-        ([| 0; 0 |], Z.of_int 5);
-      ]
-
-  let evaluate_monome (degres : Index.t) (coef : Z.t) (valeurs : Real.t array) :
-      Real.t =
-    if Array.length degres <> Array.length valeurs then
-      failwith
-        "La longueur de la liste des degrés doit être égale à la longueur de \
-         la list de valeurs "
-    else
-      let n = Array.length degres in
-      let coeff = Real.of_z coef in
-      let l = ref [ coeff ] in
-      for i = 0 to n - 1 do
-        let x = Real.pow valeurs.(i) (Q.of_int degres.(i)) in
-        l := x :: !l
-      done;
-      let new_coeff = mult !l in
-      new_coeff
-
-  let evaluate_polynome (p : t) (l : Real.t array) : Real.t =
-    M.fold
-      (fun (i : Index.t) (c : Z.t) acc -> Real.add acc (evaluate_monome i c l))
-      p (Real.of_int 0)
-
-  let pp _ = assert false
-end
-
-type sigma = Egal | Less
+type sigma = Equal | Less
 type polyn = Z_poly.t array
 type contraint = polyn * sigma
 
+let pp_constraint ppf (c : contraint) =
+  let array_p, sigma = c in
+  let pp_sigma ppf s =
+    match s with
+    | Equal -> Format.fprintf ppf "="
+    | Less -> Format.fprintf ppf "<"
+  in
+  let pp_array_poly ppf arr =
+    let pp_sep ppf () = Format.fprintf ppf "; " in
+    assert (Array.length arr > 0);
+    Format.fprintf ppf "[| %a" Fmt.(array ~sep:semi Z_poly.pp) arr;
+
+    (*Format.pp_print_array ~pp_sep Z_poly.pp_polynomes ppf arr;*)
+    Format.fprintf ppf " |]"
+  in
+  Format.fprintf ppf "(%a , %a)" pp_array_poly array_p pp_sigma sigma
+
 let is_poly_nul (c : contraint) (s : Real.t array) : bool =
   let p, _ = c in
-  let arr = Array.map (fun poly -> Z_poly.evaluate_polynome poly s) p in
+  let arr = Array.map (fun poly -> Z_poly.evaluate poly s) p in
   Array.for_all (fun x -> Real.compare x (Real.of_int 0) = 0) arr
-
 
 let specialize_poly (c : contraint) (s : Real.t array) : Real.Poly.t =
   let p, _ = c in
-  let arr = Array.map (fun poly -> Z_poly.evaluate_polynome poly s) p in
+  let arr = Array.map (fun poly -> Z_poly.evaluate poly s) p in
   Real.Poly.create arr
 
 let array_filtrer (arr : Real.t array) (f : Real.t -> bool) : Real.t array =
@@ -88,6 +45,7 @@ let array_filtrer (arr : Real.t array) (f : Real.t -> bool) : Real.t array =
       incr j)
   done;
   Array.sub arr 0 !j
+
 let sorts_array (arr : Real.t array) : Real.t array =
   let copie = Array.copy arr in
   Array.sort Real.compare copie;
@@ -95,28 +53,25 @@ let sorts_array (arr : Real.t array) : Real.t array =
 
 let real_roots (p : Real.Poly.t) : Real.t array =
   let l = Real.Poly.roots p in
-  let l' = array_filtrer l Real.is_real in 
+  let l' = array_filtrer l Real.is_real in
   sorts_array l'
-  
 
 let num_roots (p : Real.Poly.t) : int = Array.length (real_roots p)
 
-let evaluate_contraint ((arr_p, s') : contraint) (s : Real.t array) (r : Real.t) =
+let evaluate_contraint ((arr_p, s') : contraint) (s : Real.t array) (r : Real.t)
+    =
   let c = (arr_p, s') in
-  if (is_poly_nul c s) then 
-    match s' with 
-    |Egal -> true 
-    |Less -> false 
-else 
-  match s' with
-  | Egal ->
-      let p = specialize_poly c s in
-      if Real.compare (Real.Poly.evaluate p r) (Real.of_int 0) = 0 then true
-      else false
-  | Less ->
-      let p = specialize_poly c s in
-      if Real.compare (Real.Poly.evaluate p r) (Real.of_int 0) < 0 then true
-      else false
+  if is_poly_nul c s then match s' with Equal -> true | Less -> false
+  else
+    match s' with
+    | Equal ->
+        let p = specialize_poly c s in
+        if Real.compare (Real.Poly.evaluate p r) (Real.of_int 0) = 0 then true
+        else false
+    | Less ->
+        let p = specialize_poly c s in
+        if Real.compare (Real.Poly.evaluate p r) (Real.of_int 0) < 0 then true
+        else false
 
 (*#######"#"#"#"##"##"#*************************************************************************)
 (*#######"#"#"#"##"##"#********** Algorithme 3 **************************************************)
@@ -141,15 +96,14 @@ let get_unsat_intervals (c : contraint array) (s : Real.t array) :
   let n = Array.length c in
   let rec loop i acc =
     if i < 0 then acc
-    else
-    if (is_poly_nul c.(i) s) then 
-      (let b = evaluate_contraint c.(i) s (Real.of_int 1) in
+    else if is_poly_nul c.(i) s then
+      let b = evaluate_contraint c.(i) s (Real.of_int 1) in
       if not b then [ Covering.Open (Covering.Ninf, Covering.Pinf) ]
-      else loop (i - 1) acc)
-    else 
+      else loop (i - 1) acc
+    else
       let p = specialize_poly c.(i) s in
       let roots = real_roots p in
-      if (Array.length roots = 0)  then
+      if Array.length roots = 0 then
         let b = evaluate_contraint c.(i) s (Real.of_int 1) in
         if not b then [ Covering.Open (Covering.Ninf, Covering.Pinf) ]
         else loop (i - 1) acc
@@ -179,45 +133,51 @@ let get_unsat_intervals (c : contraint array) (s : Real.t array) :
     !intervals
   with Break l -> l*)
 
+let mk_poly (specs : (int list * int) list) : Z_poly.t =
+  Z_poly.make (List.map (fun (l, c) -> (Array.of_list l, Z.of_int c)) specs)
 
-  let mk_poly (specs : (int * int) list) : Z_poly.t =
-    Z_poly.M.of_list (List.map (fun (d, c) -> ([| d |], Z.of_int c)) specs)
-  
-  let mk_constraint (poly_specs : (int * int) list array) (sigma : sigma) : contraint =
-    (Array.map mk_poly poly_specs, sigma)
-  
-  let c4 = mk_constraint [| [(2, 1); (0, 4)]; [(0, 4)] |] Less
-  let c2 = mk_constraint [| [(2, -1); (1, 2); (0, 3)]; [(0, -4)] |] Less
-  let c3 = mk_constraint [| [(1, 1); (0, 2)]; [(0, -4)] |] Less
-  
-  let c_array = [| c1 ; c2 ; c3 |]
-  
+let mk_constraint (poly_specs : (int list * int) list array) (sigma : sigma) :
+    contraint =
+  (Array.map mk_poly poly_specs, sigma)
+
+let c1 = mk_constraint [| [ ([ 2 ], -1); ([ 0 ], 4) ]; [ ([ 0 ], 4) ] |] Less
+
+let c2 =
+  mk_constraint
+    [| [ ([ 2 ], -1); ([ 1 ], 2); ([ 0 ], 3) ]; [ ([ 0 ], -4) ] |]
+    Less
+
+let c3 = mk_constraint [| [ ([ 1 ], 1); ([ 0 ], 2) ]; [ ([ 0 ], -4) ] |] Less
+let c_array = [| c1; c2; c3 |]
+
+let c4 =
+  mk_constraint
+    [| [ ([ 1; 0; 0 ], 1) ]; [ ([ 0; 0; 0 ], 1) ]; [ ([ 1; 0; 1 ], -1) ] |]
+    Less
+
+let c_array = [| c4 |]
+
 let p1c1 : Z_poly.t =
-  Z_poly.M.of_list [ ([| 2 |], Z.of_int 1); ([| 0 |], Z.of_int (-4)) ]
+  Z_poly.make [ ([| 2 |], Z.of_int 1); ([| 0 |], Z.of_int (-4)) ]
 
-let p2c1 : Z_poly.t = Z_poly.M.of_list [ ([| 0 |], Z.of_int 4) ]
+let p2c1 : Z_poly.t = Z_poly.make [ ([| 0 |], Z.of_int 4) ]
 
 let p1c2 : Z_poly.t =
-  Z_poly.M.of_list
+  Z_poly.make
     [ ([| 2 |], Z.of_int (-1)); ([| 1 |], Z.of_int 2); ([| 0 |], Z.of_int 3) ]
 
-let p2c2 : Z_poly.t = Z_poly.M.of_list [ ([| 0 |], Z.of_int (-4)) ]
+let p2c2 : Z_poly.t = Z_poly.make [ ([| 0 |], Z.of_int (-4)) ]
 
 let p1c3 : Z_poly.t =
-  Z_poly.M.of_list [ ([| 1 |], Z.of_int 1); ([| 0 |], Z.of_int (2)) ]
+  Z_poly.make [ ([| 1 |], Z.of_int 1); ([| 0 |], Z.of_int 2) ]
 
-let p2c3 : Z_poly.t = Z_poly.M.of_list [ ([| 0 |], Z.of_int (-4)) ]
-
-let c1 = ([| p1c1 ; p2c1|], Less) 
-let c2 = ([| p1c2 ; p2c2|], Less)
-let c3 = ([| p1c3 ; p2c3|], Less)
-
-
-let c_array = [| c1 ; c2 ; c3|] 
-
-let result = get_unsat_intervals c_array [|Real.of_int 0|]
-
-
+let p2c3 : Z_poly.t = Z_poly.make [ ([| 0 |], Z.of_int (-4)) ]
+let c1 = ([| p1c1; p2c1 |], Less)
+let c2 = ([| p1c2; p2c2 |], Less)
+let c3 = ([| p1c3; p2c3 |], Less)
+let c4 = ()
+let c_array = [| c1; c2; c3 |]
+let result = get_unsat_intervals c_array [| Real.of_int 0 |]
 
 (*#######"#"#"#"##"##"#*************************************************************************)
 (*#######"#"#"#"##"##"#*************************************************************************)
@@ -253,13 +213,6 @@ let (exemple : constraints) =
 
 type set_const = constraints list
 
-let rec mult (l : Real.t list) : Real.t =
-  match l with
-  | [] -> Real.of_int 1
-  | x :: l ->
-      Format.printf "%a@." Real.pp x;
-      Real.mul (mult l) x
-
 let rec addition (l : Real.t option list) : Real.t =
   match l with
   | [] -> Real.of_int 0
@@ -290,11 +243,11 @@ let substituer_monome ((coeff, degres) : monome_multi_variable)
 
     let nouveau_degres =
       let rec construire_nouveaux_degres m =
-        if m > 0 then
-          0 :: construire_nouveaux_degres (m - 1)
+        if m > 0 then 0 :: construire_nouveaux_degres (m - 1)
         else [ List.nth degres (List.length degres - 1) ]
       in
-      construire_nouveaux_degres (List.length degres - 1) (* reccursion a l'envers if length *)
+      construire_nouveaux_degres (List.length degres - 1)
+      (* reccursion a l'envers if length *)
     in
     if Real.compare new_coeff (Real.of_int 0) = 0 then None
       (* Le monôme s'annule après substitution *)

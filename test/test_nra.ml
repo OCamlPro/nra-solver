@@ -1,6 +1,8 @@
 open QCheck2
 module Covering = Nra_solver.Covering
+module Constraint = Nra_solver.Constraint
 module Real = Nra_solver.Real
+module Z_poly = Nra_solver.Z_poly
 
 type bound = Finite of int | Pinf | Ninf
 
@@ -107,13 +109,6 @@ let test_basile =
   Test.make ~print:print_covering ~count:1000 ~name:__FUNCTION__ gen2 (fun c ->
       let d = Covering.compute_good_covering c in
       Covering.is_good_covering d)
-
-(* Group all the tests together *)
-let covering_suite = [ test_basile ]
-
-(* --- Run Tests --- *)
-(* This line registers the suite to be run by the dune runner *)
-let () = QCheck_base_runner.run_tests_main covering_suite
 
 (*
 let is_covering = Covering.is_covering
@@ -530,3 +525,105 @@ let covering_suite =
 (* This line registers the suite to be run by the dune runner *)
 let () = QCheck_base_runner.run_tests_main covering_suite
 *)
+let gen_small_nonzero : int Gen.t =
+  Gen.(bind (1 -- 5) @@ fun x -> oneofl [ x; -x ])
+
+let gen_degres_coeff (n : int) : (int list * int) Gen.t =
+  Gen.(pair (list_size (pure n) (0 -- 10)) gen_small_nonzero)
+
+let compare_pair ((u, _) : int list * int) ((v, _) : int list * int) : int =
+  List.compare Int.compare u v
+
+let gen_poly_non_nul (n : int) : Z_poly.t Gen.t =
+  (* n : nombre des variables*)
+  Gen.bind
+    (Gen.list_size (Gen.int_range 1 3) (gen_degres_coeff n))
+    (fun l ->
+      let l' = List.sort_uniq compare_pair l in
+      Gen.pure (Constraint.mk_poly l'))
+
+let gen_poly_non_nul (n : int) : Z_poly.t Gen.t =
+  Gen.bind (gen_poly_non_nul n) (fun p ->
+      assert (n > 0);
+      assert (not @@ Z_poly.equal p Z_poly.zero);
+      Gen.pure p)
+
+let gen_poly (n : int) : Z_poly.t Gen.t =
+  Gen.frequency [ (2, gen_poly_non_nul n); (1, Gen.pure Z_poly.zero) ]
+
+let gen_constraint (n : int) (m : int) : Constraint.contraint Gen.t =
+  Gen.bind
+    (Gen.map2
+       (fun dernier_polynome debut -> Array.append debut [| dernier_polynome |])
+       (gen_poly_non_nul n)
+       (Gen.array_size (Gen.int_range 1 m) (gen_poly n)))
+    (fun l ->
+      Gen.frequency
+        [
+          (1, Gen.pure (l, Constraint.Less)); (1, Gen.pure (l, Constraint.Equal));
+        ])
+
+let gen_array_constraints (n : int) (m : int) : Constraint.contraint array Gen.t
+    =
+  Gen.bind
+    (Gen.array_size (Gen.pure 1) (gen_constraint n m))
+    (fun l -> Gen.pure l)
+
+let gen_real : Real.t Gen.t = Gen.map Real.of_int (Gen.int_range (-20) 20)
+
+let gen_s n : Real.t array Gen.t =
+  Gen.bind
+    (Gen.list_size (Gen.pure n) gen_real)
+    (fun l -> Gen.pure (Array.of_list l))
+
+let gen_pair (n : int) (m : int) :
+    (Constraint.contraint array * Real.t array) Gen.t =
+  Gen.pair (gen_array_constraints n m) (gen_s n)
+
+let test_constraint (s : Real.t array) (c : Constraint.contraint)
+    (l : Covering.interval list) : bool =
+  let arr = Array.of_list l in
+  Array.for_all
+    (fun x -> Constraint.evaluate_contraint c s (Constraint.val_pick x))
+    arr
+
+let test_constraints (s : Real.t array) (c : Constraint.contraint array)
+    (l : Covering.interval list) : bool =
+  let n = Array.length c in
+  let rec loop i acc =
+    if i < 0 then acc
+    else if not (test_constraint s c.(i) l) then loop (i - 1) (c.(i) :: acc)
+    else loop (i - 1) acc
+  in
+  let res = loop (n - 1) [] in
+  if List.length res = n then true else false
+
+let pp_array_constraint ppf c =
+  let pp_sep ppf () = Format.fprintf ppf "\n" in
+  Format.pp_print_array ~pp_sep Constraint.pp_constraint ppf c
+
+let pp_pair ppf (c, s) =
+  let pp_array_real ppf arr =
+    let pp_sep ppf () = Format.fprintf ppf "; " in
+    Format.fprintf ppf "[| ";
+    Format.pp_print_array ~pp_sep Real.pp ppf arr;
+    Format.fprintf ppf " |]"
+  in
+
+  Format.fprintf ppf "@[(%a, %a)@]" pp_array_constraint c pp_array_real s
+
+let test_get_unsat_intervals =
+  let print = Fmt.to_to_string pp_pair in
+  Test.make ~print ~count:1000 ~name:"get_unsat_interval marche" (gen_pair 3 4)
+    (fun x ->
+      let c, s = x in
+      Format.printf "FOOO: %s@." (print x);
+      let l = Constraint.get_unsat_intervals c s in
+      test_constraints s c l)
+
+(* Group all the tests together *)
+let covering_suite = [ test_basile; test_get_unsat_intervals ]
+
+(* --- Run Tests --- *)
+(* This line registers the suite to be run by the dune runner *)
+let () = QCheck_base_runner.run_tests_main covering_suite
