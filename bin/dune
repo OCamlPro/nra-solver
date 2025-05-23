@@ -5,6 +5,11 @@
  (modules frontend)
  (libraries nra_solver cmdliner fmt dolmen dolmen_type dolmen_loop flint))
 
+(executable
+ (name test)
+ (modules test)
+ (libraries nra_solver flint libpoly_bindings fmt zarith))
+
 (env
  (dev
   (flags

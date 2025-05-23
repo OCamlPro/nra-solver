@@ -26,6 +26,7 @@ val get_unsat_intervals :
 
 val mk_poly : (int list * int) list -> Z_poly.t
 val mk_constraint : (int list * int) list array -> sigma -> contraint
+val required_coefficients : Real.t array -> Polynomes.t list -> Z_poly.t list 
 
 (************************************************************************************************)
 

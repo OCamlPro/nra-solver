@@ -40,3 +40,4 @@ module Covering = Covering
 module Real = Real
 module Constraint = Constraint
 module Z_poly = Z_poly
+module Polynomes = Polynomes

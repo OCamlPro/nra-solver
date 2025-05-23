@@ -20,8 +20,12 @@ module Index = struct
   let pp = Fmt.(brackets @@ array ~sep:comma int)
 end
 
-module M = Map.Make (Index)
+module M = struct
+  include Map.Make (Index)
 
+  let of_list l = of_seq @@ List.to_seq l
+  let to_list t = List.of_seq @@ to_seq t
+end
 type t = Z.t M.t
 
 let zero = M.empty
@@ -29,6 +33,9 @@ let zero = M.empty
 let make l =
   let l = List.filter (fun (i, c) -> not @@ Z.equal c Z.zero) l in
   M.of_list l
+
+let reciproque_make (l : t) = 
+  M.to_list l 
 
 (** 17x^2 y + 3y + 5 *)
 let _ : t =
@@ -81,3 +88,6 @@ let evaluate (p : t) (l : Real.t array) : Real.t =
     p (Real.of_int 0)
 
 let equal = M.equal Z.equal
+let is_non_nul p = 
+  if equal p  zero then false else true 
+

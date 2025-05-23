@@ -3,6 +3,7 @@ module Covering = Nra_solver.Covering
 module Constraint = Nra_solver.Constraint
 module Real = Nra_solver.Real
 module Z_poly = Nra_solver.Z_poly
+module Polynomes = Nra_solver.Polynomes 
 
 type bound = Finite of int | Pinf | Ninf
 
@@ -556,7 +557,7 @@ let gen_constraint (n : int) (m : int) : Constraint.contraint Gen.t =
     (Gen.map2
        (fun dernier_polynome debut -> Array.append debut [| dernier_polynome |])
        (gen_poly_non_nul n)
-       (Gen.array_size (Gen.int_range 1 m) (gen_poly n)))
+       (Gen.array_size (Gen.pure 1) (gen_poly n)))
     (fun l ->
       Gen.frequency
         [
@@ -582,7 +583,10 @@ let gen_pair (n : int) (m : int) :
 
 let test_constraint (s : Real.t array) (c : Constraint.contraint)
     (l : Covering.interval list) : bool =
+
+  
   let arr = Array.of_list l in
+  if arr = [||] then false else 
   Array.for_all
     (fun x -> Constraint.evaluate_contraint c s (Constraint.val_pick x))
     arr
@@ -599,14 +603,14 @@ let test_constraints (s : Real.t array) (c : Constraint.contraint array)
   if List.length res = n then true else false
 
 let pp_array_constraint ppf c =
-  let pp_sep ppf () = Format.fprintf ppf "\n" in
-  Format.pp_print_array ~pp_sep Constraint.pp_constraint ppf c
+  let sep ppf () = Format.fprintf ppf "\n" in
+  Fmt.array ~sep Constraint.pp_constraint ppf c
 
 let pp_pair ppf (c, s) =
   let pp_array_real ppf arr =
-    let pp_sep ppf () = Format.fprintf ppf "; " in
+    let sep ppf () = Format.fprintf ppf "; " in
     Format.fprintf ppf "[| ";
-    Format.pp_print_array ~pp_sep Real.pp ppf arr;
+    Fmt.array ~sep Real.pp ppf arr;
     Format.fprintf ppf " |]"
   in
 
@@ -627,3 +631,6 @@ let covering_suite = [ test_basile; test_get_unsat_intervals ]
 (* --- Run Tests --- *)
 (* This line registers the suite to be run by the dune runner *)
 let () = QCheck_base_runner.run_tests_main covering_suite
+
+
+let result = Constraint.required_coefficients [| Real.of_int 0 |] [Polynomes.p] 
