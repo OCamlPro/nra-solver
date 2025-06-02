@@ -26,16 +26,16 @@ module M = struct
   let of_list l = of_seq @@ List.to_seq l
   let to_list t = List.of_seq @@ to_seq t
 end
+
 type t = Z.t M.t
 
 let zero = M.empty
 
 let make l =
-  let l = List.filter (fun (i, c) -> not @@ Z.equal c Z.zero) l in
+  let l = List.filter (fun (_, c) -> not @@ Z.equal c Z.zero) l in
   M.of_list l
 
-let reciproque_make (l : t) = 
-  M.to_list l 
+let reciproque_make (l : t) = M.to_list l
 
 (** 17x^2 y + 3y + 5 *)
 let _ : t =
@@ -76,7 +76,7 @@ let evaluate_monome (degres : Index.t) (coef : Z.t) (valeurs : Real.t array) :
     let coeff = Real.of_z coef in
     let l = ref [ coeff ] in
     for i = 0 to n - 1 do
-      let x = Real.pow valeurs.(i) (Q.of_int degres.(i)) in
+      let x = Real.pow valeurs.(i) (degres.(i)) in
       l := x :: !l
     done;
     let new_coeff = mult !l in
@@ -88,6 +88,4 @@ let evaluate (p : t) (l : Real.t array) : Real.t =
     p (Real.of_int 0)
 
 let equal = M.equal Z.equal
-let is_non_nul p = 
-  if equal p  zero then false else true 
-
+let is_non_nul p = if equal p zero then false else true

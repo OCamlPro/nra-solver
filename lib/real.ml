@@ -1,41 +1,59 @@
-module CA = Flint.CA
+include Libpoly.Value
 
-let ctx = CA.CTX.mk ()
+let pp ppf (x : t) =
+  Format.fprintf ppf "%s" (to_string x) 
 
-module Poly = struct
-  module P = Flint.CA_poly
 
-  type t = P.t
 
-  let create = P.create ~ctx
-  let evaluate = P.evaluate ~ctx
-  let add = P.add ~ctx
-  let mul = P.mul ~ctx
-  let pp = P.pp ~ctx
-  let sub = P.sub ~ctx
-  let roots = P.roots ~ctx
-  let to_string = P.to_string ~ctx
-end
 
-type t = CA.t
+ module Var = Libpoly.Variable
+   
+  
+
+
+
+module Integer = Libpoly.Integer
+module Rational = Libpoly.Rational
+module Dyadic_rational = Libpoly.Dyadic_rational
+module Ring = Libpoly.Ring
+module AlgebraicNumber = Libpoly.AlgebraicNumber
+
+
+(* --- Define global context components --- *)
+let var_db = Var.Db.create ()
+let var_order = Var.Order.create ()
+
+(* Define the polynomial context using the created db and order *)
+let poly_ctx =
+  Libpoly.Polynomial.Context.create
+    ~ring:Ring.lp_Z (* Use the default integer ring *)
+    var_db var_order
+(* ---------------------------------------- *)
+
+ 
+
+
 type real = t
 
-let pp = CA.pp ~ctx
-let is_real = CA.is_real ~ctx
-let show = Fmt.to_to_string pp
-let floor = CA.floor ~ctx
-let ceil = CA.ceil ~ctx
-let of_int = CA.of_int ~ctx
-let of_z = CA.of_z ~ctx
-let pow = CA.pow ~ctx
-let to_q = CA.to_q ~ctx
-let neg = CA.neg ~ctx
-let add = CA.add ~ctx
-let mul = CA.mul ~ctx
-let sub = CA.sub ~ctx
-let sqrt = CA.sqrt ~ctx
-let div = CA.div ~ctx
-let compare = CA.compare ~ctx
+let view = view
+let sgn = sgn
+let of_int = of_int
+let of_z = of_z
+let of_q = of_q
+let inv = inv
+let to_string = to_string
+let is_integer = is_integer
+let is_rational = is_rational
+let to_rational_opt = to_rational_opt
+let of_rational = of_rational
+let pow = pow
+let neg = neg
+let to_q_opt = to_q_opt
+let add = add
+let mul = mul
+let sub = sub
+let div = div
+let compare = compare
 let max x y = if compare x y < 0 then y else x
 let min x y = if compare x y < 0 then x else y
 

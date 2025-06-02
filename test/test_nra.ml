@@ -3,7 +3,7 @@ module Covering = Nra_solver.Covering
 module Constraint = Nra_solver.Constraint
 module Real = Nra_solver.Real
 module Z_poly = Nra_solver.Z_poly
-module Polynomes = Nra_solver.Polynomes 
+module Polynomes = Nra_solver.Polynomes
 
 type bound = Finite of int | Pinf | Ninf
 
@@ -529,69 +529,65 @@ let () = QCheck_base_runner.run_tests_main covering_suite
 let gen_small_nonzero : int Gen.t =
   Gen.(bind (1 -- 5) @@ fun x -> oneofl [ x; -x ])
 
-let gen_degres_coeff (n : int) : (int list * int) Gen.t =
-  Gen.(pair (list_size (pure n) (0 -- 10)) gen_small_nonzero)
+let gen_degres_coeff (n : int) : (int * int list) Gen.t =
+  Gen.(pair gen_small_nonzero (list_size (pure n) (0 -- 10)) )
 
-let compare_pair ((u, _) : int list * int) ((v, _) : int list * int) : int =
+let compare_pair ((_, u) : int * int list  ) ((_, v) : int  * int list) : int =
   List.compare Int.compare u v
 
-let gen_poly_non_nul (n : int) : Z_poly.t Gen.t =
+  let x = Polynomes.Var.create "x"
+  let y = Polynomes.Var.create "y"
+  let z = Polynomes.Var.create "z"
+
+  let variables = [x ; y ; z]
+
+
+let gen_poly (n : int) : Polynomes.t Gen.t =
   (* n : nombre des variables*)
   Gen.bind
     (Gen.list_size (Gen.int_range 1 3) (gen_degres_coeff n))
     (fun l ->
       let l' = List.sort_uniq compare_pair l in
-      Gen.pure (Constraint.mk_poly l'))
+      Gen.pure (Polynomes.mk_polynomes variables l' ))
 
-let gen_poly_non_nul (n : int) : Z_poly.t Gen.t =
-  Gen.bind (gen_poly_non_nul n) (fun p ->
-      assert (n > 0);
-      assert (not @@ Z_poly.equal p Z_poly.zero);
-      Gen.pure p)
 
-let gen_poly (n : int) : Z_poly.t Gen.t =
-  Gen.frequency [ (2, gen_poly_non_nul n); (1, Gen.pure Z_poly.zero) ]
+ 
 
-let gen_constraint (n : int) (m : int) : Constraint.contraint Gen.t =
-  Gen.bind
-    (Gen.map2
-       (fun dernier_polynome debut -> Array.append debut [| dernier_polynome |])
-       (gen_poly_non_nul n)
-       (Gen.array_size (Gen.pure 1) (gen_poly n)))
-    (fun l ->
-      Gen.frequency
-        [
-          (1, Gen.pure (l, Constraint.Less)); (1, Gen.pure (l, Constraint.Equal));
-        ])
-
-let gen_array_constraints (n : int) (m : int) : Constraint.contraint array Gen.t
+let gen_constraint (n : int) : Constraint.contraint Gen.t =
+  Gen.bind (gen_poly n )
+           (fun p -> Gen.frequency 
+                      [2 , Gen.pure ( p , Constraint.Less)
+                    ;  1 ,Gen.pure ( p , Constraint.Equal) ])
+   
+  
+let gen_array_constraints (n : int)  : Constraint.contraint array Gen.t
     =
   Gen.bind
-    (Gen.array_size (Gen.pure 1) (gen_constraint n m))
+    (Gen.array_size (Gen.pure 1) (gen_constraint n ))
     (fun l -> Gen.pure l)
 
-let gen_real : Real.t Gen.t = Gen.map Real.of_int (Gen.int_range (-20) 20)
 
-let gen_s n : Real.t array Gen.t =
+
+let gen_s (* assignment.t *)n : Polynomes.Assignment.t Gen.t =
   Gen.bind
-    (Gen.list_size (Gen.pure n) gen_real)
-    (fun l -> Gen.pure (Array.of_list l))
+    (Gen.list_size (Gen.pure n) (Gen.int_range (-20) (20)) )
 
-let gen_pair (n : int) (m : int) :
-    (Constraint.contraint array * Real.t array) Gen.t =
-  Gen.pair (gen_array_constraints n m) (gen_s n)
+    (fun l -> Gen.pure (Polynomes.mk_assignment variables l ))
 
-let test_constraint (s : Real.t array) (c : Constraint.contraint)
+let gen_pair (n : int) :
+    (Constraint.contraint array * Polynomes.Assignment.t ) Gen.t =
+  Gen.pair (gen_array_constraints n ) (gen_s n)
+
+let test_constraint (s : Polynomes.Assignment.t) (c : Constraint.contraint)
     (l : Covering.interval list) : bool =
-
-  
   let arr = Array.of_list l in
-  if arr = [||] then false else 
-  Array.for_all
-    (fun x -> Constraint.evaluate_contraint c s (Constraint.val_pick x))
-    arr
+  if arr = [||] then false
+  else
+    Array.for_all
+      (fun i -> Constraint.evaluate_contraint c s (Constraint.val_pick i))
+      arr
 
-let test_constraints (s : Real.t array) (c : Constraint.contraint array)
+let test_constraints (s : Polynomes.Assignment.t) (c : Constraint.contraint array)
     (l : Covering.interval list) : bool =
   let n = Array.length c in
   let rec loop i acc =
@@ -602,23 +598,24 @@ let test_constraints (s : Real.t array) (c : Constraint.contraint array)
   let res = loop (n - 1) [] in
   if List.length res = n then true else false
 
-let pp_array_constraint ppf c =
-  let sep ppf () = Format.fprintf ppf "\n" in
-  Fmt.array ~sep Constraint.pp_constraint ppf c
+let pp_array_constraint ppf c = Constraint.pp_array_of_constraints ppf c
+ 
 
-let pp_pair ppf (c, s) =
-  let pp_array_real ppf arr =
-    let sep ppf () = Format.fprintf ppf "; " in
-    Format.fprintf ppf "[| ";
-    Fmt.array ~sep Real.pp ppf arr;
-    Format.fprintf ppf " |]"
-  in
 
-  Format.fprintf ppf "@[(%a, %a)@]" pp_array_constraint c pp_array_real s
+let pp_pair
+    ppf
+    ((c : Constraint.contraint array ), (s : Polynomes.Assignment.t)) : unit =
+  Format.fprintf ppf
+    "(@[<v 0>c -> %a@ s -> %a@])" (* Nouvelle chaîne de format ici *)
+    pp_array_constraint c
+    Polynomes.Assignment.pp_assignment s
+
+
+    
 
 let test_get_unsat_intervals =
   let print = Fmt.to_to_string pp_pair in
-  Test.make ~print ~count:1000 ~name:"get_unsat_interval marche" (gen_pair 3 4)
+  Test.make ~print ~count:1000 ~name:"get_unsat_interval marche" (gen_pair 3 )
     (fun x ->
       let c, s = x in
       Format.printf "FOOO: %s@." (print x);
@@ -632,5 +629,4 @@ let covering_suite = [ test_basile; test_get_unsat_intervals ]
 (* This line registers the suite to be run by the dune runner *)
 let () = QCheck_base_runner.run_tests_main covering_suite
 
-
-let result = Constraint.required_coefficients [| Real.of_int 0 |] [Polynomes.p] 
+ 

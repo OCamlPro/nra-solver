@@ -35,5 +35,4 @@ module Covering : module type of Covering
 module Real : module type of Real
 module Constraint : module type of Constraint
 module Z_poly : module type of Z_poly
-module Polynomes : module  type of Polynomes 
-  
+module Polynomes : module type of Polynomes

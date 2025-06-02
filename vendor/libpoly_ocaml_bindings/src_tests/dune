@@ -1,6 +1,0 @@
-(test
- (name test)
- (libraries libpoly_bindings)
-)
-
-(env (dev (flags (:standard -warn-error -A))))
