@@ -8,11 +8,11 @@ let rec mult (l : Real.t list) : Real.t =
       Format.printf "%a@." Real.pp x;
       Real.mul (mult l) x
 
-let array_filtrer (arr : 'a array) (f : 'a -> bool) : 'a array =
+let array_filtrer (arr : contraint array) ( s : Polynomes.Assignment.t )(f : contraint -> Polynomes.Assignment.t -> bool) : contraint array =
   let n = Array.length arr in
   let j = ref 0 in
   for i = 0 to n - 1 do
-    if f arr.(i) then (
+    if f arr.(i) s then (
       arr.(!j) <- arr.(i);
       incr j)
   done;
@@ -48,10 +48,50 @@ let sorts_array (arr : Real.t array) : Real.t array =
 (*#######"#"#"#"##"##"#*************************************************************************)
 (*#######"#"#"#"##"##"#********** Algorithme 3 **************************************************)
 (*#######"#"#"#"##"##"#*************************************************************************)
- 
+ let list_coefficients ( c : contraint ) : Polynomes.t list = 
+ let (p , _) = c in 
+ let d = Polynomes.degree p in 
+ let rec loop i acc = 
+  if i >= d then acc else
+    loop (i + 1) ((Polynomes.get_coefficient p i) :: acc) in
+    loop 0 []  
+
+
+ let is_poly_nul ( c : contraint) ( s : Polynomes.Assignment.t ) = 
+  let coeff_list = list_coefficients c in 
+  let  zero_poly = Polynomes.create() in 
+  let b = 
+  List.exists ( fun p -> Polynomes.eq p zero_poly <> 1  ) coeff_list in 
+  match b with 
+   |true -> false 
+   |false -> true 
+
+
+  let is_poly_constant  ( c : contraint) ( s : Polynomes.Assignment.t ) = 
+  let coeff_list = list_coefficients c in 
+  let  zero_poly = Polynomes.create() in 
+  let liste_sans_premier_elem = List.tl coeff_list in 
+  let b = 
+    List.exists ( fun p -> Polynomes.eq p zero_poly <> 1  ) liste_sans_premier_elem in 
+    match b with 
+     |true -> false 
+     |false -> true
+
+  
+  
+
+
 
 let evaluate_contraint (c : contraint) (s : Polynomes.Assignment.t)  ( v : Real.t ) =
-  let (arr_p, s') = c in 
+  
+
+  let (arr_p, s') = c in
+  if  is_poly_nul c s then 
+    match s' with 
+    |Equal -> true 
+    |Less -> false 
+else 
+
   let x = Polynomes.top_variable arr_p in 
   let new_s = Polynomes.Assignment.add x v s in 
   match s' with
@@ -82,16 +122,31 @@ let get_unsat_intervals (c : contraint array) (s : Polynomes.Assignment.t ) : Co
   let n = Array.length c in  
   let rec loop i acc = 
     if i < 0 then acc 
-    else let ( p , _) = c.(i) in 
+    else (if (is_poly_nul c.(i) s  ) then ( if (evaluate_contraint c.(i) s (Real.of_int 0)) then (loop (i - 1) acc) else  [Covering.Open ( Covering.Ninf , Covering.Pinf )]) 
+  else 
+    let ( p , _) = c.(i) in 
     let roots = Polynomes.roots_isolate p s in
     let regions = Covering.pointsToIntervals roots in 
     let acc = list_intervals c.(i) s regions  acc in
-    loop (i - 1) acc in 
+    loop (i - 1) acc) in 
   loop (n-1) [] 
 
+let u = Polynomes.Var.create "u"
+let v = Polynomes.Var.create "v"
+let w = Polynomes.Var.create "w"
+let s = Polynomes.mk_assignment [u ; v] [0 ; (-1)]
+let v_list = [u ; v ; w]
 
 
-let x =  Polynomes.Var.create "x"
+let p1_test = Polynomes.mk_polynomes v_list [(1 , [1; 0; 4]) ; (1 , [0; 1; 0]) ]
+let p2_test = Polynomes.mk_polynomes v_list [(1 , [0; 0; 1]) ; (1 , [0; 0; 0])  ]
+
+let c1_test = (p1_test , Less)
+let c2_test = (p2_test , Less)
+
+let res_test = get_unsat_intervals [|c1_test ; c2_test|] s
+
+let x = Polynomes.Var.create "x"
 let y = Polynomes.Var.create "y"
 let z = Polynomes.Var.create "z"
 

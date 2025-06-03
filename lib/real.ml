@@ -3,8 +3,22 @@ include Libpoly.Value
 let pp ppf (x : t) =
   Format.fprintf ppf "%s" (to_string x) 
 
-
-
+  let pp_array_of_real ppf ( real_array : t array) =
+    let len = Array.length real_array in
+    if len = 0 then
+      Format.fprintf ppf "[]" (* Or just "" if you prefer empty output for empty array *)
+    else begin
+      Format.fprintf ppf "@[<v>"; (* Open a vertical box for nice formatting *)
+      Array.iteri (fun i v ->
+        pp ppf v;
+        if i < len - 1 then
+          Format.fprintf ppf "@\n" (* Print a newline for all but the last *)
+      ) real_array;
+      Format.fprintf ppf "@]" (* Close the vertical box *)
+    end
+  
+  
+  
 
  module Var = Libpoly.Variable
    

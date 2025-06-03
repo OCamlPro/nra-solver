@@ -529,8 +529,29 @@ let () = QCheck_base_runner.run_tests_main covering_suite
 let gen_small_nonzero : int Gen.t =
   Gen.(bind (1 -- 5) @@ fun x -> oneofl [ x; -x ])
 
-let gen_degres_coeff (n : int) : (int * int list) Gen.t =
-  Gen.(pair gen_small_nonzero (list_size (pure n) (0 -- 10)) )
+
+
+
+  let gen_degres_coeff (n : int) : (int * int list) Gen.t =
+    (* n ici c'est le nombre de variable ( nb de degres )*)
+
+    Gen.(pair gen_small_nonzero (list_size (pure n) (0 -- 10)) )
+     (* genere un monome normal*)
+  
+
+
+let gen_degres_coeff_main_var_non_nul (n : int) : (int * int list) Gen.t =
+  Gen.(
+    pair
+    gen_small_nonzero 
+  (
+    
+  Gen.map2
+  (fun debut_list dernier_element -> debut_list @ dernier_element)
+  (list_size (pure (n - 1)) (0 -- 10))
+  (list_size (pure (1)) (1 -- 10) )
+  ) (*genere un monome ou le degres de la variable principale est non nul*)
+  )
 
 let compare_pair ((_, u) : int * int list  ) ((_, v) : int  * int list) : int =
   List.compare Int.compare u v
@@ -540,12 +561,21 @@ let compare_pair ((_, u) : int * int list  ) ((_, v) : int  * int list) : int =
   let z = Polynomes.Var.create "z"
 
   let variables = [x ; y ; z]
+  let variables_without_z = [ x ; y]
+
+let gen_list_monomes (n : int) : (int * int list) list Gen.t = 
+  Gen.map2
+ (  fun l1 l2 -> l1 @ l2)
+ (Gen.list_size (Gen.int_range 1 2) (gen_degres_coeff n)) (* une liste de pair qui va me former mon polynome *)
+ (Gen.list_size (Gen.pure 1) (gen_degres_coeff_main_var_non_nul n)) (* le derner element de la liste est un monome qui a le dernier deg non nul *)
+
+
 
 
 let gen_poly (n : int) : Polynomes.t Gen.t =
   (* n : nombre des variables*)
   Gen.bind
-    (Gen.list_size (Gen.int_range 1 3) (gen_degres_coeff n))
+    ( gen_list_monomes n)
     (fun l ->
       let l' = List.sort_uniq compare_pair l in
       Gen.pure (Polynomes.mk_polynomes variables l' ))
@@ -563,36 +593,44 @@ let gen_constraint (n : int) : Constraint.contraint Gen.t =
 let gen_array_constraints (n : int)  : Constraint.contraint array Gen.t
     =
   Gen.bind
-    (Gen.array_size (Gen.pure 1) (gen_constraint n ))
+    (Gen.array_size (Gen.pure 10) (gen_constraint n ))
     (fun l -> Gen.pure l)
 
 
 
 let gen_s (* assignment.t *)n : Polynomes.Assignment.t Gen.t =
   Gen.bind
-    (Gen.list_size (Gen.pure n) (Gen.int_range (-20) (20)) )
+    (Gen.list_size (Gen.pure (n - 1)) (Gen.int_range (-20) (20)) )
 
-    (fun l -> Gen.pure (Polynomes.mk_assignment variables l ))
+    (fun l -> Gen.pure  (Polynomes.mk_assignment variables_without_z l)   )
 
 let gen_pair (n : int) :
     (Constraint.contraint array * Polynomes.Assignment.t ) Gen.t =
   Gen.pair (gen_array_constraints n ) (gen_s n)
 
-let test_constraint (s : Polynomes.Assignment.t) (c : Constraint.contraint)
-    (l : Covering.interval list) : bool =
-  let arr = Array.of_list l in
-  if arr = [||] then false
-  else
+
+let test0_constraint (c : Constraint.contraint) (s : Polynomes.Assignment.t ) : bool =
+  if ( Constraint.is_poly_constant c s = false  ) then true (* le cas ou l'evaluation en s ne donne pas un poly constant *)
+
+
+  else (* cas constant *) ( if Constraint.evaluate_contraint c s (Real.of_int 0) then false else true )
+
+  
+
+let test_constraint (s : Polynomes.Assignment.t) (c : Constraint.contraint array )
+    (i : Covering.interval ) : bool =
     Array.for_all
-      (fun i -> Constraint.evaluate_contraint c s (Constraint.val_pick i))
-      arr
+      (fun const -> Constraint.evaluate_contraint const s (Constraint.val_pick i))
+      c
 
 let test_constraints (s : Polynomes.Assignment.t) (c : Constraint.contraint array)
+      
     (l : Covering.interval list) : bool =
-  let n = Array.length c in
+    let l_arr = Array.of_list l in 
+  let n = Array.length l_arr in
   let rec loop i acc =
     if i < 0 then acc
-    else if not (test_constraint s c.(i) l) then loop (i - 1) (c.(i) :: acc)
+    else if not (test_constraint s c l_arr.(i)) then loop (i - 1) (l_arr.(i) :: acc)
     else loop (i - 1) acc
   in
   let res = loop (n - 1) [] in

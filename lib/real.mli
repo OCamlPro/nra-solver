@@ -16,5 +16,6 @@ include module type of Libpoly.Value with type t := t
   end
 
   val pp : Format.formatter -> t -> unit 
+  val pp_array_of_real : Format.formatter -> t array -> unit 
 
 
