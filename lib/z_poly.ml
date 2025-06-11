@@ -76,7 +76,7 @@ let evaluate_monome (degres : Index.t) (coef : Z.t) (valeurs : Real.t array) :
     let coeff = Real.of_z coef in
     let l = ref [ coeff ] in
     for i = 0 to n - 1 do
-      let x = Real.pow valeurs.(i) (degres.(i)) in
+      let x = Real.pow valeurs.(i) degres.(i) in
       l := x :: !l
     done;
     let new_coeff = mult !l in

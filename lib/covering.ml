@@ -10,6 +10,76 @@ let compare_bound (b : bound) (b' : bound) : int =
 type interval = Open of bound * bound | Exact of Real.t
 type covering = interval list
 
+type intervalPoly = {
+  interval : interval;
+  l_bound : bound;
+  u_bound : bound;
+  u_set : Polynomes.Set.t;
+  l_set : Polynomes.Set.t;
+  p_set : Polynomes.Set.t;
+  p_orthogonal_set : Polynomes.Set.t;
+}
+
+let interval_to_intervalPoly (i : interval) (q : Polynomes.t) =
+  match i with
+  | Open (Ninf, Pinf) ->
+      {
+        interval = i;
+        u_bound = Pinf;
+        l_bound = Ninf;
+        u_set = Polynomes.Set.empty;
+        l_set = Polynomes.Set.empty;
+        p_set = Polynomes.Set.empty;
+        p_orthogonal_set = Polynomes.Set.empty;
+      }
+  | Open (Ninf, Finite a) ->
+      {
+        interval = i;
+        u_bound = Finite a;
+        l_bound = Ninf;
+        u_set = Polynomes.Set.singleton q;
+        l_set = Polynomes.Set.empty;
+        p_set = Polynomes.Set.singleton q;
+        p_orthogonal_set = Polynomes.Set.empty;
+      }
+  | Open (Finite a, Pinf) ->
+      {
+        interval = i;
+        u_bound = Pinf;
+        l_bound = Finite a;
+        u_set = Polynomes.Set.empty;
+        l_set = Polynomes.Set.singleton q;
+        p_set = Polynomes.Set.singleton q;
+        p_orthogonal_set = Polynomes.Set.empty;
+      }
+  | Open (Finite a, Finite b) ->
+      {
+        interval = i;
+        u_bound = Finite b;
+        l_bound = Finite a;
+        u_set = Polynomes.Set.singleton q;
+        l_set = Polynomes.Set.singleton q;
+        p_set = Polynomes.Set.singleton q;
+        p_orthogonal_set = Polynomes.Set.empty;
+      }
+  | Exact a ->
+      {
+        interval = i;
+        u_bound = Finite a;
+        l_bound = Finite a;
+        u_set = Polynomes.Set.singleton q;
+        l_set = Polynomes.Set.singleton q;
+        p_set = Polynomes.Set.singleton q;
+        p_orthogonal_set = Polynomes.Set.empty;
+      }
+  | _ -> assert false
+
+let intervalpoly_to_interval (i : intervalPoly list) : interval list =
+  let rec loop i acc =
+    match i with [] -> acc | j :: l -> loop l (j.interval :: acc)
+  in
+  loop i []
+
 let make_open b1 b2 =
   if compare_bound b1 b2 >= 0 then invalid_arg "make_open";
   Open (b1, b2)
@@ -231,7 +301,7 @@ let pp_debug_interval ppf i =
   match i with
   | Open (b1, b2) ->
       Format.fprintf ppf "Open (%a, %a)" pp_debug_bound b1 pp_debug_bound b2
-  | Exact b -> Format.fprintf ppf "Exact (Real.of_int (%a))"  Real.pp b 
+  | Exact b -> Format.fprintf ppf "Exact (Real.of_int (%a))" Real.pp b
 
 let pp_debug_intervals = Fmt.(brackets @@ list ~sep:semi pp_debug_interval)
 let show_intervals = Fmt.to_to_string @@ pp_intervals
@@ -290,6 +360,11 @@ let compute_good_covering (u : interval list) : interval list =
     done;
     assert false
   with Exit -> !l'
+
+let compute_cover (u : intervalPoly list) : intervalPoly list =
+  let l = intervalpoly_to_interval u in
+  let l_good = compute_good_covering l in
+  List.filter (fun i -> List.mem i.interval l_good) u
 
 let b =
   compute_good_covering
@@ -378,9 +453,6 @@ type set_const = constraints list
 
 let rec mult (l : Real.t list) : Real.t =
   match l with [] -> Real.of_int 1 | x :: l -> Real.mul (mult l) x
-
-
-  
 
 let pointsToIntervals (arr : Real.t array) : interval list =
   let n = Array.length arr in
