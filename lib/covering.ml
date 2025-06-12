@@ -12,8 +12,8 @@ type covering = interval list
 
 type intervalPoly = {
   interval : interval;
-  l_bound : bound;
   u_bound : bound;
+  l_bound : bound;
   u_set : Polynomes.Set.t;
   l_set : Polynomes.Set.t;
   p_set : Polynomes.Set.t;

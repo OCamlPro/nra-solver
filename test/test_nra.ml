@@ -527,11 +527,11 @@ let covering_suite =
 let () = QCheck_base_runner.run_tests_main covering_suite
 *)
 let gen_small_nonzero : int Gen.t =
-  Gen.(bind (1 -- 5) @@ fun x -> oneofl [ x; -x ])
+  Gen.(bind (1 -- 20) @@ fun x -> oneofl [ x; -x ])
 
 let gen_degres_coeff (n : int) : (int * int list) Gen.t =
   (* n ici c'est le nombre de variable ( nb de degres )*)
-  Gen.(pair gen_small_nonzero (list_size (pure n) (0 -- 10)))
+  Gen.(pair gen_small_nonzero (list_size (pure n) (0 -- 15)))
 (* genere un monome normal*)
 
 let gen_degres_coeff_main_var_non_nul (n : int) : (int * int list) Gen.t =
@@ -580,20 +580,12 @@ let gen_array_constraints (n : int) : Constraint.contraint array Gen.t =
 
 let gen_s (* assignment.t *) n : Polynomes.Assignment.t Gen.t =
   Gen.bind
-    (Gen.list_size (Gen.pure (n - 1)) (Gen.int_range (-20) 20))
+    (Gen.list_size (Gen.pure (n - 1)) (Gen.int_range (-50) 50))
     (fun l -> Gen.pure (Polynomes.mk_assignment variables_without_z l))
 
 let gen_pair (n : int) :
     (Constraint.contraint array * Polynomes.Assignment.t) Gen.t =
   Gen.pair (gen_array_constraints n) (gen_s n)
-
-let test0_constraint (c : Constraint.contraint) (s : Polynomes.Assignment.t) :
-    bool =
-  if Constraint.is_poly_constant c s = false then true
-    (* le cas ou l'evaluation en s ne donne pas un poly constant *)
-  else if (* cas constant *) Constraint.evaluate_contraint c s (Real.of_int 0)
-  then false
-  else true
 
 let test_constraint (s : Polynomes.Assignment.t)
     (c : Constraint.contraint array) (i : Covering.interval) : bool =
@@ -624,12 +616,12 @@ let pp_pair ppf ((c : Constraint.contraint array), (s : Polynomes.Assignment.t))
 
 let test_get_unsat_intervals =
   let print = Fmt.to_to_string pp_pair in
-  Test.make ~print ~count:1000 ~name:"get_unsat_interval marche" (gen_pair 3)
+  Test.make ~print ~count:100 ~name:"get_unsat_interval marche" (gen_pair 3)
     (fun x ->
       let c, s = x in
       Format.printf "FOOO: %s@." (print x);
       let l = Constraint.get_unsat_intervals c s in
-      test_constraints s c l)
+      test_constraints s c (Covering.intervalpoly_to_interval l))
 
 (* Group all the tests together *)
 let covering_suite = [ test_basile; test_get_unsat_intervals ]

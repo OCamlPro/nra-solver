@@ -58,13 +58,12 @@ let list_coefficients (c : contraint) : Polynomes.t list =
   in
   loop 0 []
 
-  let list_coefficients_poly (p : Polynomes.t) : Polynomes.t list =
-    let d = Polynomes.degree p in
-    let rec loop i acc =
-      if i >= d then acc else loop (i + 1) (Polynomes.get_coefficient p i :: acc)
-    in
-    loop 0 []
-
+let list_coefficients_poly (p : Polynomes.t) : Polynomes.t list =
+  let d = Polynomes.degree p in
+  let rec loop i acc =
+    if i >= d then acc else loop (i + 1) (Polynomes.get_coefficient p i :: acc)
+  in
+  loop 0 []
 
 let is_poly_nul (c : contraint) (s : Polynomes.Assignment.t) =
   let coeff_list = list_coefficients c in
@@ -73,10 +72,10 @@ let is_poly_nul (c : contraint) (s : Polynomes.Assignment.t) =
   match b with true -> false | false -> true
 
 let is_poly_non_constant (p : Polynomes.t) =
-  let coeff_list = list_coefficients_poly p  in
+  let coeff_list = list_coefficients_poly p in
   let zero_poly = Polynomes.create () in
   let liste_sans_premier_elem = List.tl coeff_list in
-List.exists (fun p -> Polynomes.eq p zero_poly <> 1) liste_sans_premier_elem
+  List.exists (fun p -> Polynomes.eq p zero_poly <> 1) liste_sans_premier_elem
 
 let evaluate_contraint (c : contraint) (s : Polynomes.Assignment.t) (v : Real.t)
     =
@@ -173,175 +172,270 @@ let result = get_unsat_intervals [| c1; c2; c3 |] s
 (*#######"#"#"#"##"##"#*************************************************************************)
 (*#######"#"#"#"##"##"#******** Algorithm 4 *****************************************************************)
 
+let discriminant_set (p_set : Polynomes.Set.t) : Polynomes.Set.t =
+  Polynomes.Set.map Polynomes.disc p_set
 
-let discriminant_set ( p_set : Polynomes.Set.t) : Polynomes.Set.t =
-  Polynomes.Set.map (Polynomes.disc ) p_set 
+let rec union_poly_sets (l : Polynomes.Set.t list) : Polynomes.Set.t =
+  match l with
+  | [] -> Polynomes.Set.empty
+  | x :: l -> Polynomes.Set.union x (union_poly_sets l)
 
-let rec union_poly_sets (l : Polynomes.Set.t list ) : Polynomes.Set.t = 
-    match l with 
-     |[] -> Polynomes.Set.empty
-     |x :: l -> Polynomes.Set.union x (union_poly_sets l) 
+let resultant_lower_prime (l : Covering.bound) (s : Polynomes.Assignment.t)
+    (p : Polynomes.t (*of lower bound L*)) (q_set : Polynomes.Set.t) =
+  let q_list = Polynomes.to_list q_set in
+  let rec loop res acc =
+    match res with
+    | [] -> acc
+    | q :: res ->
+        let roots = Polynomes.roots_isolate q s in
+        let b =
+          List.exists
+            (fun a -> Covering.compare_bound (Finite a) l <= 0)
+            (Array.to_list roots)
+        in
+        if b then loop res (Polynomes.Set.add (Polynomes.resultant p q) acc)
+        else loop res acc
+  in
+  loop q_list Polynomes.Set.empty
 
+let resultant_lower (l : Covering.bound) (s : Polynomes.Assignment.t)
+    (p_set : Polynomes.Set.t) (q_set : Polynomes.Set.t) =
+  let p_list = Polynomes.to_list p_set in
+  let rec loop res acc =
+    match res with
+    | [] -> acc
+    | p :: res ->
+        loop res (Polynomes.Set.union (resultant_lower_prime l s p q_set) acc)
+  in
+  loop p_list Polynomes.Set.empty
 
+let resultant_upper_prime (u : Covering.bound) (s : Polynomes.Assignment.t)
+    (p : Polynomes.t (*of lower bound U*)) (q_set : Polynomes.Set.t) =
+  let q_list = Polynomes.to_list q_set in
+  let rec loop res acc =
+    match res with
+    | [] -> acc
+    | q :: res ->
+        let roots = Polynomes.roots_isolate q s in
+        let b =
+          List.exists
+            (fun a -> Covering.compare_bound (Finite a) u >= 0)
+            (Array.to_list roots)
+        in
+        if b then loop res (Polynomes.Set.add (Polynomes.resultant p q) acc)
+        else loop res acc
+  in
+  loop q_list Polynomes.Set.empty
 
+let resultant_upper (l : Covering.bound) (s : Polynomes.Assignment.t)
+    (p_set : Polynomes.Set.t) (q_set : Polynomes.Set.t) =
+  let p_list = Polynomes.to_list p_set in
+  let rec loop res acc =
+    match res with
+    | [] -> acc
+    | p :: res ->
+        loop res (Polynomes.Set.union (resultant_upper_prime l s p q_set) acc)
+  in
+  loop p_list Polynomes.Set.empty
 
-let resultant_lower_prime (l : Covering.bound ) ( s : Polynomes.Assignment.t ) (p : Polynomes.t (*of lower bound L*)) (q_set : Polynomes.Set.t) =
-  let q_list = Polynomes.to_list q_set in 
-  let rec loop res acc = 
-    match res with 
-    |[] -> acc
-    |q :: res 
-       -> let roots = Polynomes.roots_isolate q s in 
-       let b = List.exists ( fun a -> Covering.compare_bound  (Finite a) l <= 0) (Array.to_list  roots) in 
-       if b then (loop res ( Polynomes.Set.add (Polynomes.resultant p q ) acc ))
-       else loop res acc 
-      in loop q_list (Polynomes.Set.empty)
-  
-
-let resultant_lower (l : Covering.bound ) ( s : Polynomes.Assignment.t ) (p_set : Polynomes.Set.t) (q_set : Polynomes.Set.t) =
-  let p_list = Polynomes.to_list p_set in 
-    let rec loop res acc = 
-      match res with 
-      |[] -> acc 
-      |p :: res -> loop res (Polynomes.Set.union (resultant_lower_prime l s p q_set) acc ) in 
-  loop p_list Polynomes.Set.empty 
-      
-  
-  let resultant_upper_prime (u : Covering.bound ) ( s : Polynomes.Assignment.t ) (p : Polynomes.t (*of lower bound U*)) (q_set : Polynomes.Set.t) =
-    let q_list = Polynomes.to_list q_set in 
-    let rec loop res acc = 
-      match res with 
-      |[] -> acc
-      |q :: res 
-         -> let roots = Polynomes.roots_isolate q s in 
-         let b = List.exists ( fun a -> Covering.compare_bound  (Finite a) u >= 0) (Array.to_list  roots) in 
-         if b then (loop res ( Polynomes.Set.add (Polynomes.resultant p q ) acc ))
-         else loop res acc 
-        in loop q_list (Polynomes.Set.empty)
-    
-  
-  let resultant_upper (l : Covering.bound ) ( s : Polynomes.Assignment.t ) (p_set : Polynomes.Set.t) (q_set : Polynomes.Set.t) =
-    let p_list = Polynomes.to_list p_set in 
-      let rec loop res acc = 
-        match res with 
-        |[] -> acc 
-        |p :: res -> loop res (Polynomes.Set.union (resultant_upper_prime l s p q_set) acc ) in 
-    loop p_list Polynomes.Set.empty 
-        
-
-
-
-
-let construct_characterization ( s : Polynomes.Assignment.t ) ( i_list : Covering.intervalPoly list) :  Polynomes.Set.t  =
-   let good_cover = Covering.compute_cover i_list in 
-   let rec loop (l : Covering.intervalPoly list)  (acc  : Polynomes.Set.t  )= 
-     match l with 
-     |[] -> acc 
-     |x :: l
-      -> loop l 
-              ( union_poly_sets
-               [discriminant_set x.p_set ;
+let construct_characterization (s : Polynomes.Assignment.t)
+    (i_list : Covering.intervalPoly list) : Polynomes.Set.t =
+  let good_cover = Covering.compute_cover i_list in
+  let rec loop (l : Covering.intervalPoly list) (acc : Polynomes.Set.t) =
+    match l with
+    | [] -> acc
+    | x :: l ->
+        loop l
+          (union_poly_sets
+             [
+               discriminant_set x.p_set;
                x.p_orthogonal_set;
-               Polynomes.required_coefficients s x.p_set;      
-               resultant_lower (x.l_bound) s x.l_set x.p_set;
-               resultant_upper (x.u_bound) s x.u_set x.p_set;
-               ]) 
-  in 
+               Polynomes.required_coefficients s x.p_set;
+               resultant_lower x.l_bound s x.l_set x.p_set;
+               resultant_upper x.u_bound s x.u_set x.p_set;
+             ])
+  in
   let l = loop good_cover Polynomes.Set.empty in
-  let l'= 
-  Polynomes.Set.map (fun p -> Polynomes.primitive p) l in Polynomes.Set.filter (is_poly_non_constant) l' 
-  
+  let l' = Polynomes.Set.map (fun p -> Polynomes.primitive p) l in
+  Polynomes.Set.filter is_poly_non_constant l'
+
 (*#######"#"#"#"##"##"#*************************************************************************)
 (*#######"#"#"#"##"##"#*************************************************************************)
 (*#######"#"#"#"##"##"#*******************Algorithme 5******************************************)
 
-
-let list_max (compare_fn : 'a -> 'a -> int) (lst : 'a list) : 'a  =
+let list_max (compare_fn : 'a -> 'a -> int) (lst : 'a list) : 'a =
   match lst with
-  | [] ->  assert false 
+  | [] -> assert false
   | hd :: tl ->
       let max_val =
         List.fold_left
           (fun current_max elem ->
-             if compare_fn elem current_max > 0 then elem (* If elem is greater than current_max, update *)
-             else current_max)
+            if compare_fn elem current_max > 0 then elem
+              (* If elem is greater than current_max, update *)
+            else current_max)
           hd (* Start with the first element as the initial max *)
           tl
       in
-       max_val
+      max_val
 
+let list_min (compare_fn : 'a -> 'a -> int) (lst : 'a list) : 'a =
+  match lst with
+  | [] -> assert false
+  | hd :: tl ->
+      let min_val =
+        List.fold_left
+          (fun current_min elem ->
+            if compare_fn elem current_min < 0 then elem
+              (* If 'elem' is smaller than 'current_min', it's the new minimum *)
+            else current_min)
+          hd (* Start with the first element as the initial minimum *)
+          tl
+      in
+      min_val
 
-      let list_min (compare_fn : 'a -> 'a -> int) (lst : 'a list) : 'a  =
-        match lst with
-        | [] -> assert false 
-        | hd :: tl ->
-            let min_val =
-              List.fold_left
-                (fun current_min elem ->
-                   if compare_fn elem current_min < 0 then elem (* If 'elem' is smaller than 'current_min', it's the new minimum *)
-                   else current_min)
-                hd (* Start with the first element as the initial minimum *)
-                tl
-            in
-             min_val
+let compute_list_roots (p_set : Polynomes.Set.t) (s : Polynomes.Assignment.t) :
+    Real.t list list =
+  (* [roots de p1 ; .... ; roots de pn]*)
+  let rec loop l acc =
+    match l with
+    | [] -> acc
+    | x :: l ->
+        let roots = Polynomes.roots_isolate x s in
+        loop l (Array.to_list roots :: acc)
+  in
+  loop (Polynomes.to_list p_set) []
 
-let compute_list_roots ( p_set : Polynomes.Set.t) ( s : Polynomes.Assignment.t) : Real.t list list = (* [roots de p1 ; .... ; roots de pn]*)
-    let rec loop l acc = 
-      match l with 
-      |[] -> acc 
-      |x :: l -> let roots = Polynomes.roots_isolate x s in 
-          loop l ((Array.to_list roots) :: acc) in
-  loop (Polynomes.to_list p_set ) []
-    
-let compute_map_roots ( p_set : Polynomes.Set.t) (s : Polynomes.Assignment.t) : Real.t array Polynomes.Map.t =
-  Polynomes.Set.fold (fun p acc -> Polynomes.Map.add p (Polynomes.roots_isolate p s) acc) p_set Polynomes.Map.empty
+let compute_map_roots (p_set : Polynomes.Set.t) (s : Polynomes.Assignment.t) :
+    Real.t array Polynomes.Map.t =
+  Polynomes.Set.fold
+    (fun p acc -> Polynomes.Map.add p (Polynomes.roots_isolate p s) acc)
+    p_set Polynomes.Map.empty
 
-let compute_l ( m : Real.t array Polynomes.Map.t ) b =
-  Polynomes.Map.fold (fun _ roots acc ->
-        Array.fold_left (fun acc r -> if Covering.compare_bound (Finite r) b <= 0 then Covering.max_bound (Finite r) acc else acc) acc roots) m 
-        Covering.Ninf
-let compute_u ( m : Real.t array Polynomes.Map.t ) b =
-  Polynomes.Map.fold (fun _ roots acc ->
-    Array.fold_left (fun acc r -> if Covering.compare_bound (Finite r) b >= 0 then Covering.min_bound (Finite r) acc else acc) acc roots) m 
-    Covering.Pinf
+let compute_l (m : Real.t array Polynomes.Map.t) b =
+  Polynomes.Map.fold
+    (fun _ roots acc ->
+      Array.fold_left
+        (fun acc r ->
+          if Covering.compare_bound (Finite r) b <= 0 then
+            Covering.max_bound (Finite r) acc
+          else acc)
+        acc roots)
+    m Covering.Ninf
 
-let compute_roots (l : Real.t list list ) =
-  let rec loop res acc = 
-    match res with 
-    |[] -> acc 
-    | x :: res -> loop res (x @ acc) in 
-  let l' = loop l [] in let l'' = List.map (fun x -> Covering.Finite x ) l' in [Covering.Ninf] @ l'' @ [Covering.Pinf]
+let compute_u (m : Real.t array Polynomes.Map.t) b =
+  Polynomes.Map.fold
+    (fun _ roots acc ->
+      Array.fold_left
+        (fun acc r ->
+          if Covering.compare_bound (Finite r) b >= 0 then
+            Covering.min_bound (Finite r) acc
+          else acc)
+        acc roots)
+    m Covering.Pinf
 
+let compute_roots (l : Real.t list list) =
+  let rec loop res acc =
+    match res with [] -> acc | x :: res -> loop res (x @ acc)
+  in
+  let l' = loop l [] in
+  let l'' = List.map (fun x -> Covering.Finite x) l' in
+  [ Covering.Ninf ] @ l'' @ [ Covering.Pinf ]
 
-let set_function ( m : Real.t array Polynomes.Map.t ) (l : Covering.bound ) = 
-    Polynomes.Map.fold (fun p r acc -> 
-      let b = Array.exists (fun x -> Covering.compare_bound (Covering.Finite x) l = 0) r in
-      if b then Polynomes.Set.add p acc else acc) m Polynomes.Set.empty
+let set_function (m : Real.t array Polynomes.Map.t) (l : Covering.bound) =
+  Polynomes.Map.fold
+    (fun p r acc ->
+      let b =
+        Array.exists
+          (fun x -> Covering.compare_bound (Covering.Finite x) l = 0)
+          r
+      in
+      if b then Polynomes.Set.add p acc else acc)
+    m Polynomes.Set.empty
 
+let bound_to_real b =
+  match b with Covering.Finite a -> a | Pinf | Ninf -> assert false
 
-
-let bound_to_real b = 
-  match b with 
-  |Covering.Finite a -> a
-  |Pinf | Ninf -> assert false  
-
-let interval_from_charachterization (v : Polynomes.Var.t)(s : Polynomes.Assignment.t )(si : Real.t )(p_set : Polynomes.Set.t) : Covering.intervalPoly = 
-  let pi = Polynomes.Set.filter (fun x -> (Polynomes.top_variable x) = v) p_set in 
-  let p_orthogonal = Polynomes.Set.filter (fun x -> if (Polynomes.Set.mem x pi) then false else true ) p_set in 
+let interval_from_charachterization (v : Polynomes.Var.t)
+    (s : Polynomes.Assignment.t) (si : Real.t) (p_set : Polynomes.Set.t) :
+    Covering.intervalPoly =
+  let pi = Polynomes.Set.filter (fun x -> Polynomes.top_variable x = v) p_set in
+  let p_orthogonal =
+    Polynomes.Set.filter
+      (fun x -> if Polynomes.Set.mem x pi then false else true)
+      p_set
+  in
   let roots_list = compute_map_roots p_set s in
-   
-  let lower_bound = compute_l roots_list (Finite si) in 
-  let upper_bound = compute_u roots_list (Finite si) in 
-  let l_set_result = set_function   roots_list lower_bound in 
-  let u_set_result = set_function  roots_list upper_bound in 
-  if Covering.compare_bound upper_bound lower_bound = 0 then 
-    Covering.{ interval = Covering.Exact (bound_to_real lower_bound)  ;   l_bound = lower_bound ;   u_bound = upper_bound;
-              u_set = u_set_result ; l_set = l_set_result ; p_set = pi ; p_orthogonal_set = p_orthogonal       }
-  else  Covering.{ interval = Covering.Open ( lower_bound , upper_bound)  ;   l_bound = lower_bound ;   u_bound = upper_bound;
-  u_set = u_set_result ; l_set = l_set_result ; p_set = pi ; p_orthogonal_set = p_orthogonal       }
 
+  let lower_bound = compute_l roots_list (Finite si) in
+  let upper_bound = compute_u roots_list (Finite si) in
+  let l_set_result = set_function roots_list lower_bound in
+  let u_set_result = set_function roots_list upper_bound in
+  if Covering.compare_bound upper_bound lower_bound = 0 then
+    Covering.
+      {
+        interval = Covering.Exact (bound_to_real lower_bound);
+        l_bound = lower_bound;
+        u_bound = upper_bound;
+        u_set = u_set_result;
+        l_set = l_set_result;
+        p_set = pi;
+        p_orthogonal_set = p_orthogonal;
+      }
+  else
+    Covering.
+      {
+        interval = Covering.Open (lower_bound, upper_bound);
+        l_bound = lower_bound;
+        u_bound = upper_bound;
+        u_set = u_set_result;
+        l_set = l_set_result;
+        p_set = pi;
+        p_orthogonal_set = p_orthogonal;
+      }
 
-  
+(*#######"#"#"#"##"##"#*************************************************************************)
+(*#######"#"#"#"##"##"#*************************************************************************)
+(*#######"#"#"#"##"##"#*************** Algorithme 2 ********************************************)
+
+type res =
+  | Sat of (Polynomes.Var.t * Real.t) list
+  | Unsat of Covering.intervalPoly list
+
+let get_unsat_cover (c : contraint array) (n : int) : res =
+  let rec loop (s : (Polynomes.Var.t * Real.t) list) acc =
+    let i = List.length s in
+    let si = Covering.sample_outside (Covering.intervalpoly_to_interval acc) in
+
+    match si with
+    | None -> Unsat acc
+    | Some x -> (
+        let vi = Polynomes.Var.create "vi" in
+        let s' = (vi, x) :: s in
+        if i = n then Sat s'
+        else
+          let acc = get_unsat_intervals c (Polynomes.Assignment.of_list s') in
+          let f = loop s' acc in
+          match f with
+          | Sat s -> Sat s'
+          | Unsat i ->
+              let r =
+                construct_characterization (Polynomes.Assignment.of_list s') i
+              in
+              let new_i =
+                interval_from_charachterization vi
+                  (Polynomes.Assignment.of_list s')
+                  x r
+              in
+              if
+                Covering.is_covering
+                  (Covering.intervalpoly_to_interval (new_i :: acc))
+              then Unsat (new_i :: acc)
+              else
+                loop s'
+                  (get_unsat_intervals c (Polynomes.Assignment.of_list s')
+                  @ (new_i :: acc)))
+  in
+  loop [] (get_unsat_intervals c (Polynomes.Assignment.of_list []))
 
 (*#######"#"#"#"##"##"#*************************************************************************)
 (*#######"#"#"#"##"##"#*************************************************************************)
