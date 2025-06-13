@@ -162,9 +162,17 @@ let p3 =
   Polynomes.mk_polynomes variables
     [ (1, [ 1; 0 ]); (2, [ 0; 0 ]); (-4, [ 0; 1 ]) ]
 
-let c1 = (p1, Less)
-let c2 = (p2, Less)
-let c3 = (p3, Less)
+let c1 = (Polynomes.mk_polynomes variables
+[ (-1, [ 2; 0 ]); (4, [ 0; 0 ]); (4, [ 0; 1 ]) ]
+, Less)
+let c2 = (Polynomes.mk_polynomes variables
+[ (-1, [ 2; 0 ]); (3, [ 0; 0 ]); (2, [ 1; 0 ]); (-4, [ 0; 1 ]) ]
+
+, Less)
+let c3 = (Polynomes.mk_polynomes variables
+[ (1, [ 1; 0 ]); (2, [ 0; 0 ]); (-4, [ 0; 1 ]) ]
+
+, Less)
 let s = Polynomes.Assignment.of_list [ (x, Real.of_int 0) ]
 let result = get_unsat_intervals [| c1; c2; c3 |] s
 
@@ -401,7 +409,7 @@ type res =
   | Sat of (Polynomes.Var.t * Real.t) list
   | Unsat of Covering.intervalPoly list
 
-let get_unsat_cover (c : contraint array) (n : int) : res =
+let get_unsat_cover (c : contraint array) (variables : Polynomes.Var.t array) (n : int) : res =
   let rec loop (s : (Polynomes.Var.t * Real.t) list) acc =
     let i = List.length s in
     let si = Covering.sample_outside (Covering.intervalpoly_to_interval acc) in
@@ -409,33 +417,28 @@ let get_unsat_cover (c : contraint array) (n : int) : res =
     match si with
     | None -> Unsat acc
     | Some x -> (
-        let vi = Polynomes.Var.create "vi" in
+        let vi = variables.(i) in
         let s' = (vi, x) :: s in
-        if i = n then Sat s'
+        if i = (n-1) then Sat s'
         else
           let acc = get_unsat_intervals c (Polynomes.Assignment.of_list s') in
           let f = loop s' acc in
           match f with
-          | Sat s -> Sat s'
+          | Sat s'' -> Sat s''
           | Unsat i ->
               let r =
                 construct_characterization (Polynomes.Assignment.of_list s') i
               in
               let new_i =
                 interval_from_charachterization vi
-                  (Polynomes.Assignment.of_list s')
+                  (Polynomes.Assignment.of_list s)
                   x r
               in
-              if
-                Covering.is_covering
-                  (Covering.intervalpoly_to_interval (new_i :: acc))
-              then Unsat (new_i :: acc)
-              else
-                loop s'
-                  (get_unsat_intervals c (Polynomes.Assignment.of_list s')
-                  @ (new_i :: acc)))
+                loop s' (new_i :: acc))
   in
   loop [] (get_unsat_intervals c (Polynomes.Assignment.of_list []))
+
+  let resultat = get_unsat_cover [| c1; c2; c3 |] [|x ; y |] 1 
 
 (*#######"#"#"#"##"##"#*************************************************************************)
 (*#######"#"#"#"##"##"#*************************************************************************)

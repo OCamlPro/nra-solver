@@ -1,6 +1,12 @@
 type sigma = Equal | Less
 type contraint = Polynomes.t * sigma
 
+
+type res =
+  | Sat of (Polynomes.Var.t * Real.t) list
+  | Unsat of Covering.intervalPoly list
+
+
 val array_filtrer :
   contraint array ->
   Polynomes.Assignment.t ->
@@ -17,6 +23,7 @@ val get_unsat_intervals :
 
 val pp_constraint : Format.formatter -> contraint -> unit
 val pp_array_of_constraints : Format.formatter -> contraint array -> unit
+val get_unsat_cover : contraint array -> Polynomes.Var.t array -> int -> res 
 
 (************************************************************************************************)
 
