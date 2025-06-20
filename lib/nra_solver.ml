@@ -1,19 +1,39 @@
-type t = unit
-type variable = { id : int; name : string }
+type t = {
+  poly_ctx : Libpoly.Polynomial.Context.t;
+  var_db : Libpoly.Variable.Db.t;
+  var_order : Libpoly.Variable.Order.t;
+  constraints : Constraint.contraint Queue.t;
+  tbl : (int, Libpoly.Variable.t) Hashtbl.t;
+}
+
+type variable = Libpoly.Variable.t
 type term = unit
 
-let create () = ()
+let create () =
+  let var_db = Libpoly.Variable.Db.create () in
+  let var_order = Libpoly.Variable.Order.create () in
+  {
+    var_db;
+    var_order;
+    poly_ctx =
+      Libpoly.Polynomial.Context.create
+        ~ring:Libpoly.Ring.lp_Z (* Use the default integer ring *)
+        var_db var_order;
+    constraints = Queue.create ();
+    tbl = Hashtbl.create 17
+  }
 
 (* Associate an unique identifier to each variable because we could create
    multiple variables with the same name. *)
-
-let fresh =
+  
+let create_variable t = 
   let cnt = ref 0 in
-  fun () ->
+  fun name ->
+    let var = Libpoly.Variable.Db.new_variable t.var_db name in
     incr cnt;
-    !cnt
-
-let create_variable () name = { id = fresh (); name }
+    Format.printf "thamtoth: %d -> %s@." !cnt (Libpoly.Variable.Db.get_name t.var_db var);
+    Hashtbl.add t.tbl !cnt var;
+    var
 
 module Term = struct
   let variable _ = ()
@@ -25,7 +45,9 @@ module Term = struct
   let div _ _ = ()
 end
 
-let assert_eq _ _ _ = ()
+let assert_eq t p q = 
+  let r = Term.(sub p q) in
+  ()
 let assert_neq _ _ _ = ()
 let assert_lt _ _ _ = ()
 let assert_leq _ _ _ = ()

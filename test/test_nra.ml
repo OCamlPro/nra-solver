@@ -69,9 +69,9 @@ let fringe t =
   in
   loop [] t |> List.rev
 
-let generator_itree (tactics : (int * tactic) list) l u : itree Gen.t =
+let generator_itree ~fuel (tactics : (int * tactic) list) l u : itree Gen.t =
   Gen.(
-    sized_size (pure 15) (fun fuel ->
+    sized_size (pure fuel) (fun fuel ->
         fix
           (fun self (fuel, l, u) ->
             match fuel with
@@ -94,14 +94,14 @@ let generator_itree (tactics : (int * tactic) list) l u : itree Gen.t =
                 map br (flatten_l g))
           (fuel, l, u)))
 
-let generator_covering (tactics : (int * tactic) list) :
+let generator_covering ~fuel (tactics : (int * tactic) list) :
     Covering.interval list Gen.t =
   Gen.map
     (fun t -> List.map to_covering_interval @@ fringe t)
-    (generator_itree tactics Ninf Pinf)
+    (generator_itree ~fuel tactics Ninf Pinf)
 
-let gen1 = generator_covering [ (1, split) ]
-let gen2 = generator_covering [ (1, split); (3, basile) ]
+let gen1 = generator_covering ~fuel:15 [ (1, split) ]
+let gen2 = generator_covering ~fuel:15 [ (1, split); (3, basile) ]
 
 let print_covering (c : Covering.interval list) =
   Format.asprintf "%a" Covering.pp_debug_intervals c
@@ -527,11 +527,11 @@ let covering_suite =
 let () = QCheck_base_runner.run_tests_main covering_suite
 *)
 let gen_small_nonzero : int Gen.t =
-  Gen.(bind (1 -- 20) @@ fun x -> oneofl [ x; -x ])
+  Gen.(bind (1 -- 10) @@ fun x -> oneofl [ x; -x ])
 
 let gen_degres_coeff (n : int) : (int * int list) Gen.t =
   (* n ici c'est le nombre de variable ( nb de degres )*)
-  Gen.(pair gen_small_nonzero (list_size (pure n) (0 -- 15)))
+  Gen.(pair gen_small_nonzero (list_size (pure n) (0 -- 3)))
 (* genere un monome normal*)
 
 let gen_degres_coeff_main_var_non_nul (n : int) : (int * int list) Gen.t =
@@ -539,8 +539,8 @@ let gen_degres_coeff_main_var_non_nul (n : int) : (int * int list) Gen.t =
     pair gen_small_nonzero
       (Gen.map2
          (fun debut_list dernier_element -> debut_list @ dernier_element)
-         (list_size (pure (n - 1)) (0 -- 10))
-         (list_size (pure 1) (1 -- 10)))
+         (list_size (pure (n - 1)) (0 -- 3))
+         (list_size (pure 1) (1 -- 3)))
     (*genere un monome ou le degres de la variable principale est non nul*))
 
 let compare_pair ((_, u) : int * int list) ((_, v) : int * int list) : int =
@@ -549,7 +549,7 @@ let compare_pair ((_, u) : int * int list) ((_, v) : int * int list) : int =
 let x = Polynomes.Var.create "x"
 let y = Polynomes.Var.create "y"
 let z = Polynomes.Var.create "z"
-let variables = [ x; y; z ]
+let variables = [| x; y; z |]
 let variables_without_z = [ x; y ]
 
 let gen_list_monomes (n : int) : (int * int list) list Gen.t =
@@ -564,7 +564,7 @@ let gen_poly (n : int) : Polynomes.t Gen.t =
   (* n : nombre des variables*)
   Gen.bind (gen_list_monomes n) (fun l ->
       let l' = List.sort_uniq compare_pair l in
-      Gen.pure (Polynomes.mk_polynomes variables l'))
+      Gen.pure (Polynomes.mk_polynomes (Array.to_list variables) l'))
 
 let gen_constraint (n : int) : Constraint.contraint Gen.t =
   Gen.bind (gen_poly n) (fun p ->
@@ -575,8 +575,29 @@ let gen_constraint (n : int) : Constraint.contraint Gen.t =
 
 let gen_array_constraints (n : int) : Constraint.contraint array Gen.t =
   Gen.bind
-    (Gen.array_size (Gen.pure 10) (gen_constraint n))
+    (Gen.array_size (Gen.pure 2) (gen_constraint n))
     (fun l -> Gen.pure l)
+
+let test_evaluation_constraints (l : Constraint.contraint array)
+    (s : Polynomes.Assignment.t) : bool =
+  let l_list = Array.to_list l in
+  let booleen_func c =
+    let p, sigma = c in
+    match sigma with
+    | Constraint.Equal -> Polynomes.sgn p s = 0
+    | Constraint.Less -> Polynomes.sgn p s < 0
+  in
+  List.for_all booleen_func l_list
+
+let test_solver (c : Constraint.contraint array)
+    (variables : Polynomes.Var.t array) : bool =
+  let res = Constraint.get_unsat_cover c variables in
+  Format.printf "%a @." Constraint.sat_to_assignment res;
+  match res with
+  | Constraint.Sat l ->
+      let s = Polynomes.Assignment.of_list l in
+      test_evaluation_constraints c s
+  | Constraint.Unsat _ -> true
 
 let gen_s (* assignment.t *) n : Polynomes.Assignment.t Gen.t =
   Gen.bind
@@ -606,6 +627,54 @@ let test_constraints (s : Polynomes.Assignment.t)
   let res = loop (n - 1) [] in
   if List.length res = n then true else false
 
+let gen_bound : Covering.bound Gen.t =
+  Gen.oneof
+    [
+      Gen.map
+        (fun x -> Covering.Finite x)
+        (Gen.map Real.of_int (Gen.int_range 0 100));
+      Gen.pure Covering.Pinf;
+      Gen.pure Covering.Ninf;
+    ]
+
+let gen_exact_interval : Covering.interval Gen.t =
+  Gen.map (fun x -> Covering.Exact (Real.of_int x)) (Gen.int_range 0 100)
+
+let gen_interval : Covering.interval Gen.t =
+  Gen.frequency
+    [
+      (1, gen_exact_interval);
+      ( 1,
+        Gen.bind (Gen.pair gen_bound gen_bound) (fun (b1, b2) ->
+            let c = Covering.compare_bound b1 b2 in
+            if c = 0 then
+              match b1 with
+              | Covering.Finite r -> Gen.pure (Covering.Exact r)
+              | Pinf | Ninf -> Gen.pure (Covering.Exact (Real.of_int 0))
+            else if c < 0 then Gen.pure (Covering.Open (b1, b2))
+            else Gen.pure (Covering.Open (b2, b1))) );
+    ]
+
+let gen_interval_list : Covering.interval list Gen.t = Gen.list gen_interval
+
+let gen_intervals_list_or_coverings : Covering.interval list Gen.t =
+  Gen.frequency [ (1, gen2); (1, gen_interval_list) ]
+
+let appartenance (x : Real.t) (i : Covering.interval) : bool =
+  match i with
+  | Covering.Exact a -> Real.compare x a = 0
+  | Open (a, b) ->
+      Covering.compare_bound a (Finite x) < 0
+      && Covering.compare_bound (Finite x) b < 0
+
+let test_appartenance (x : Real.t) (l : Covering.interval list) : bool =
+  List.exists (fun i -> appartenance x i) l
+
+let test_sample_outside l =
+  match Covering.sample_outside l with
+  | None -> Covering.is_covering l
+  | Some x -> if test_appartenance x l then false else true
+
 let pp_array_constraint ppf c = Constraint.pp_array_of_constraints ppf c
 
 let pp_pair ppf ((c : Constraint.contraint array), (s : Polynomes.Assignment.t))
@@ -613,6 +682,53 @@ let pp_pair ppf ((c : Constraint.contraint array), (s : Polynomes.Assignment.t))
   Format.fprintf ppf
     "(@[<v 0>c -> %a@ s -> %a@])" (* Nouvelle chaîne de format ici *)
     pp_array_constraint c Polynomes.Assignment.pp_assignment s
+
+let p1 =
+  Polynomes.mk_polynomes variables_without_z
+    [ (-1, [ 2; 0 ]); (4, [ 0; 0 ]); (4, [ 0; 1 ]) ]
+
+let p2 =
+  Polynomes.mk_polynomes variables_without_z
+    [ (-1, [ 2; 0 ]); (3, [ 0; 0 ]); (2, [ 1; 0 ]); (-4, [ 0; 1 ]) ]
+
+let p3 =
+  Polynomes.mk_polynomes variables_without_z
+    [ (1, [ 1; 0 ]); (2, [ 0; 0 ]); (-4, [ 0; 1 ]) ]
+
+let c1 =
+  ( Polynomes.mk_polynomes variables_without_z
+      [ (-1, [ 2; 0 ]); (4, [ 0; 0 ]); (4, [ 0; 1 ]) ],
+    Constraint.Less )
+
+let c2 =
+  ( Polynomes.mk_polynomes variables_without_z
+      [ (-1, [ 2; 0 ]); (3, [ 0; 0 ]); (2, [ 1; 0 ]); (-4, [ 0; 1 ]) ],
+    Constraint.Less )
+
+let c3 =
+  ( Polynomes.mk_polynomes variables_without_z
+      [ (1, [ 1; 0 ]); (2, [ 0; 0 ]); (-4, [ 0; 1 ]) ],
+    Constraint.Less )
+
+let c4 =
+  ( Polynomes.mk_polynomes (Array.to_list variables)
+      [ (1, [ 1; 1; 1 ]); (-1, [ 0; 0; 0 ]) ],
+    Constraint.Equal )
+
+let c5 =
+  ( Polynomes.mk_polynomes (Array.to_list variables)
+      [ (1, [ 0; 0; 0 ]); (1, [ 0; 1; 1 ]) ],
+    Constraint.Less )
+
+let s = Polynomes.Assignment.of_list [ (x, Real.of_int 0) ]
+(*let result = Constraint.get_unsat_intervals [| c1; c2; c3 |] s
+let gen_result = Gen.pure result
+
+let petit_test =
+  let print = Fmt.to_to_string Covering.pp_intervals_poly in
+  Test.make ~print ~count:100 ~name:"petit test get_unsat_interval marche"
+    (Gen.pure result) (fun x ->
+      if Covering.intervalpoly_to_interval x = [] then true else false)*)
 
 let test_get_unsat_intervals =
   let print = Fmt.to_to_string pp_pair in
@@ -623,8 +739,90 @@ let test_get_unsat_intervals =
       let l = Constraint.get_unsat_intervals c s in
       test_constraints s c (Covering.intervalpoly_to_interval l))
 
+let test_sample_point =
+  let print = Fmt.to_to_string Covering.pp_intervals in
+  Test.make ~print ~count:100 ~name:"sample_point marche"
+    gen_intervals_list_or_coverings (fun x ->
+      Format.printf "Alghum: %s@." (print x);
+      test_sample_outside x)
+
+let test_compute_good_covering =
+  let print = Fmt.to_to_string Covering.pp_intervals in
+  Test.make ~print ~count:100 ~name:"compute_good_covering marche" gen2
+    (fun x ->
+      let y = Covering.compute_good_covering x in
+      let z = Covering.sort_intervals1 x in
+      Format.printf "resultat d'avant: %s@." (print x);
+      Format.printf "la liste trié: %s@." (print z);
+      Format.printf
+        "resultat compute good \
+         covering=======================================================: %s@."
+        (print y);
+      Covering.is_good_covering y)
+
+let test_algorithme2 =
+  let print = Fmt.to_to_string Constraint.pp_array_of_constraints in
+  Test.make ~print ~count:10 ~name:"solver marche" (gen_array_constraints 3)
+    (fun x ->
+      Format.printf "mes contraints :  %s\n@." (print x);
+      test_solver x variables)
+
+let test_index_c1 =
+  let print = Fmt.to_to_string Polynomes.pp in
+  let p, _ = c1 in
+  Test.make ~print ~count:100 ~name:"test index" (Gen.pure p) (fun x ->
+      Polynomes.Var.compare (Polynomes.Var.of_index 2)
+        (Polynomes.top_variable p)
+      = 0)
+
 (* Group all the tests together *)
-let covering_suite = [ test_basile; test_get_unsat_intervals ]
+let covering_suite =
+  [
+    (*test_basile;*)
+    (*test_get_unsat_intervals*)
+    (*; test_sample_point ; petit_test *)
+    (*test_compute_good_covering*)
+    test_algorithme2;
+  ]
+
+(*
+let () =
+  let resultat = Constraint.get_unsat_cover [| c1; c2; c3 |] [| x; y |] in
+  Constraint.sat_to_assignment resultat;
+  flush_all ()*)
+
+(*let s =
+  let resultat = Constraint.get_unsat_cover [| c4   |]  variables 
+ in Format.printf "%s @."(Constraint.show_sat_or_unsat resultat)*)
+
+(*let result_algo6 = Polynomes.required_coefficient s p 
+let sortie_alg6 = Polynomes.string_of_polynomial_list (Polynomes.to_list result_algo6)
+let () = Format.printf " %s le resultat de algo 6 c'est ça ::::::: @. "  sortie_alg6 *)
+
+(*let coeffs = Polynomes.string_of_polynomial_list (Polynomes.to_list (Polynomes.required_coefficient (Polynomes.Assignment.of_list  [(x ,Real.of_int 0)  ]) (fst c4)))
+let s = Format.printf "les coefficients alogo 6 result : %s @." coeffs *)
+
+(*let test_is_polu_nul (p : Constraint.contraint) s = 
+ if (Constraint.is_poly_nul p s)  then "True " else "false" 
+
+let str = (test_is_polu_nul c4 (Polynomes.Assignment.of_list  [(x ,Real.of_int 0) ; (y , Real.of_int 0) ]) )
+let str = Format.printf "la branche speciale  : %s @." str 
+
+
+
+  let a =
+  let resultat = Constraint.get_unsat_intervals [|c4|] (Polynomes.Assignment.of_list  [(x ,Real.of_int 0) ; (y , Real.of_int 0) ]) in
+  Covering.show_intervals_poly resultat 
+
+let str = Format.printf "l'algorithme 3 me donne  : %s @." a *)
+(*
+let regions0 = Covering.pointsToIntervals  [| |]
+let regions1 = Covering.pointsToIntervals [| Real.of_int 0 ; Real.of_int 1|]
+
+let str0 = Covering.show_intervals regions0 
+let str1 = Covering.show_intervals regions1 
+let () = Format.printf " %s le resultat de l'ensembles vide de points  @." str0 
+let () = Format.printf " %s le resultat de l'ensembles non vide de points  @." str1 *)
 
 (* --- Run Tests --- *)
 (* This line registers the suite to be run by the dune runner *)

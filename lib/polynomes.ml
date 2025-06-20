@@ -16,25 +16,34 @@ let poly_ctx =
 module Var = struct
   type t = Libpoly.Variable.t
 
-  let create = Libpoly.Variable.Db.new_variable var_db
+  let ctr = ref 0
+  let get_name = Libpoly.Variable.Db.get_name var_db
+  let tbl : (int, t) Hashtbl.t = Hashtbl.create 17
+
+  let create s =
+    let var = Libpoly.Variable.Db.new_variable var_db s in
+    incr ctr;
+    Format.printf "thamtoth: %d -> %s@." !ctr (get_name var);
+    Hashtbl.add tbl !ctr var;
+    var
+
   let compare = Libpoly.Variable.Order.compare_variables var_order
+
+  let of_index i =
+    (*Format.printf "argaz : %i @." i;*)
+    Hashtbl.find tbl i
 end
 
-let one =
+let of_int i =
   let m =
     Libpoly.Polynomial.Monomial.create ~ctx:poly_ctx
-      (Libpoly.Integer.of_z (Z.of_int 1))
+      (Libpoly.Integer.of_z (Z.of_int i))
       []
   in
   Libpoly.Polynomial.of_list ~ctx:poly_ctx [ m ]
 
-let zero =
-  let m =
-    Libpoly.Polynomial.Monomial.create ~ctx:poly_ctx
-      (Libpoly.Integer.of_z (Z.of_int 0))
-      []
-  in
-  Libpoly.Polynomial.of_list ~ctx:poly_ctx [ m ]
+let one = of_int 1
+let zero = of_int 0
 
 module Assignment = struct
   module M = struct
@@ -50,14 +59,15 @@ module Assignment = struct
 
   type t = Real.t M.t
 
-  let v1 = Var.create "v1"
-  let v2 = Var.create "v2"
-  let v3 = Var.create "v3"
   let of_list (l : (Var.t * Real.t) list) = M.of_list l
   let to_list = M.to_list
 
+  (*let v1 = Var.create "v1"
+  let v2 = Var.create "v2"
+  let v3 = Var.create "v3"
+
   let assign : t =
-    M.of_list [ (v1, Real.of_int 4); (v2, Real.of_int 5); (v3, Real.of_int 6) ]
+    M.of_list [ (v1, Real.of_int 4); (v2, Real.of_int 5); (v3, Real.of_int 6) ]*)
 
   let empty_assignment = Libpoly.Assignment.create var_db
 
@@ -82,7 +92,14 @@ let equal = P.Context.equal
 let create_monomial coeff vars = P.Monomial.create ~ctx:poly_ctx coeff vars
 let evaluate t a = P.evaluate t @@ Assignment.to_libpoly_assignment a
 let sgn t a = P.sgn t @@ Assignment.to_libpoly_assignment a
-let resultant p1 p2 = P.resultant ~ctx:poly_ctx p1 p2
+
+let resultant p q =
+  (*let str1 = P.to_string p in
+  Format.printf " premier poly pour calcule de resultant :%s  @." str1;
+  let str2 = P.to_string q in
+  Format.printf "dexieme poly pour calcule de resultant : %s   @." str2;*)
+  P.resultant ~ctx:poly_ctx p q
+
 let gcd p1 p2 = P.gcd ~ctx:poly_ctx p1 p2
 let of_list monomials = P.of_list ~ctx:poly_ctx monomials
 let fold = P.fold
@@ -102,10 +119,12 @@ let neg p = P.neg ~ctx:poly_ctx p
 let reductum p = P.reductum ~ctx:poly_ctx p
 let derivative p = P.derivative ~ctx:poly_ctx p
 let primitive p = P.pp ~ctx:poly_ctx p
-let disc p = resultant p (derivative p)
+let degree = P.degree
+let is_constant = P.is_constant
+let is_zero = P.is_zero
+let disc p = if degree p = 1 then of_int 1 else resultant p (derivative p)
 let top_variable = P.top_variable
 let eq = P.eq
-let degree = P.degree
 let get_coefficient p k = P.get_coefficient ~ctx:poly_ctx p k
 
 let roots_isolate p assignment =
@@ -114,6 +133,10 @@ let roots_isolate p assignment =
 let to_string = P.to_string
 let pp ppf (p : t) = Format.fprintf ppf "%s" (to_string p)
 
+let string_of_polynomial_list (polys : t list) : string =
+  let poly_strings = List.map to_string polys in
+  "[" ^ String.concat "; " poly_strings ^ "]"
+
 let mk_assignment (variables : Var.t list) (l : int list) : Assignment.t =
   let l =
     List.fold_left2 (fun acc v n -> (v, Real.of_int n) :: acc) [] variables l
@@ -121,7 +144,7 @@ let mk_assignment (variables : Var.t list) (l : int list) : Assignment.t =
   Assignment.M.of_list l
 
 let rec mult_list_polynomes (n : int) (l : t list) : t =
-  match l with [] -> one | p :: l -> mul p (mult_list_polynomes n l)
+  match l with [] -> of_int n | p :: l -> mul p (mult_list_polynomes n l)
 
 let mk_monomes (variables : Var.t list) ((coeff, degres) : int * int list) =
   let l =
@@ -146,11 +169,21 @@ let n = List.length degres in
   in let l = loop 0 [] in 
   mult_list_polynomes coeff l*)
 
-module Set = Set.Make (struct
-  type nonrec t = t
+module Set = struct
+  include Set.Make (struct
+    type nonrec t = t
 
-  let compare = P.compare
-end)
+    let compare = P.compare
+  end)
+
+  let singleton p =
+    (*assert (eq p zero_poly <> 1);*)
+    singleton p
+
+  let add p s =
+    (*assert (eq p zero_poly <> 1);*)
+    add p s
+end
 
 module Map = Map.Make (struct
   type nonrec t = t
@@ -173,10 +206,13 @@ let required_coefficient (s : Assignment.t) (p : t) =
   let result = ref Set.empty in
   let q = ref p in
   let zero_poly = create () in
+
   try
-    while eq !q zero_poly <> 0 do
+    while eq !q zero_poly <> 1 do
       let m = degree !q in
+      (*Format.printf " %d le degré de yz + 1 @. " m ; *)
       let lc = get_coefficient !q m in
+      (*Format.printf " %s le coeff dom de  yz + 1 @. " (to_string lc )  ;*)
       result := Set.add lc !result;
       if sgn lc s <> 0 then raise (Break !result) else q := reductum !q
     done;

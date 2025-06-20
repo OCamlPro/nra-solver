@@ -24,7 +24,9 @@ val make_exact : Real.t -> interval
 val pp_interval : Format.formatter -> interval -> unit
 val pp_intervals : Format.formatter -> interval list -> unit
 val pp_debug_intervals : Format.formatter -> interval list -> unit
+val pp_intervals_poly : Format.formatter -> intervalPoly list -> unit
 val show_intervals : interval list -> string
+val show_intervals_poly : intervalPoly list -> string
 val pp_bound : Format.formatter -> bound -> unit
 val is_covering : interval list -> bool
 val is_good_covering : interval list -> bool

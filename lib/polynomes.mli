@@ -5,6 +5,8 @@ module Var : sig
 
   val create : string -> t
   val compare : t -> t -> int
+  val of_index : int -> t
+  val get_name : t -> string
 end
 
 module Assignment : sig
@@ -19,6 +21,7 @@ module Assignment : sig
 end
 
 val to_string : t -> string
+val string_of_polynomial_list : t list -> string
 val pp : Format.formatter -> t -> unit
 val create : unit -> t
 val resultant : t -> t -> t
@@ -36,6 +39,8 @@ val derivative : t -> t
 val primitive : t -> t
 val disc : t -> t
 val eq : t -> t -> int
+val is_constant : t -> int
+val is_zero : t -> int
 val top_variable : t -> Var.t
 val degree : t -> int
 val get_coefficient : t -> int -> t

@@ -1,5 +1,5 @@
 type t
-type variable
+type variable = Libpoly.Variable.t
 type term
 
 val create : unit -> t
@@ -21,6 +21,17 @@ val assert_lt : t -> term -> term -> unit
 val assert_leq : t -> term -> term -> unit
 val assert_gt : t -> term -> term -> unit
 val assert_geq : t -> term -> term -> unit
+
+(*
+  let t = create () in
+  let x = create_variable t "x" in
+  let y = create_variable t "y" in
+  let p = Term.(add (variable x) (variable y)) in
+  let q = Term.(mul (variable x) (variable y)) in
+  assert_eq t p q; (* p = q *)
+  assert_neq t p q; (* p <> q *)
+  solve t
+*)
 
 type solve_result =
   | Sat  (** The problem is satisfiable. *)
