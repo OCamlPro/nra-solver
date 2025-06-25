@@ -6,13 +6,13 @@ val create : unit -> t
 val create_variable : t -> string -> variable
 
 module Term : sig
-  val variable : variable -> term
-  val real : string -> term
-  val minus : term -> term
-  val add : term -> term -> term
-  val sub : term -> term -> term
-  val mul : term -> term -> term
-  val div : term -> term -> term
+  val variable : t -> variable -> term
+  val real : t -> string -> term
+  val minus : t -> term -> term
+  val add : t -> term -> term -> term
+  val sub : t -> term -> term -> term
+  val mul : t -> term -> term -> term
+  val div : t -> term -> term -> term
 end
 
 val assert_eq : t -> term -> term -> unit
@@ -26,8 +26,8 @@ val assert_geq : t -> term -> term -> unit
   let t = create () in
   let x = create_variable t "x" in
   let y = create_variable t "y" in
-  let p = Term.(add (variable x) (variable y)) in
-  let q = Term.(mul (variable x) (variable y)) in
+  let p = Term.(add t (variable x) (variable y)) in
+  let q = Term.(mul t (variable x) (variable y)) in
   assert_eq t p q; (* p = q *)
   assert_neq t p q; (* p <> q *)
   solve t

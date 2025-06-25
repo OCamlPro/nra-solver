@@ -554,6 +554,11 @@ let get_unsat_cover (c : contraint array) (variables : Polynomes.Var.t array) :
                   ( [ new_i ])
               in
               Format.printf "%s la sortie de l'algorothm 5 : @." str2;*)
+              let () = 
+                match new_i.interval with 
+                | Covering.Exact _ -> Fmt.pr "je ne peux pas généraliser@."
+                | _ -> ()
+            in
 
               loop s (new_i :: acc))
   in
@@ -573,3 +578,19 @@ let show_sat_or_unsat = Fmt.to_to_string @@ sat_to_assignment
 (*#######"#"#"#"##"##"#*************************************************************************)
 (*#######"#"#"#"##"##"#*************************************************************************)
 (*#######"#"#"#"##"##"#*************************************************************************)
+type relation = Eq | Lt | Le | Gt | Ge (* =, <, <=, >, >= *)
+type expr =
+  | Var of Polynomes.Var.t
+  | Const of Real.t
+  | Add of expr * expr 
+  | Mul of expr * expr
+  | Pow of expr * int  
+
+
+
+type constraint_t = {
+  lhs : expr;  
+
+  op : relation;
+
+  rhs : expr;  }

@@ -539,8 +539,8 @@ let gen_degres_coeff_main_var_non_nul (n : int) : (int * int list) Gen.t =
     pair gen_small_nonzero
       (Gen.map2
          (fun debut_list dernier_element -> debut_list @ dernier_element)
-         (list_size (pure (n - 1)) (0 -- 3))
-         (list_size (pure 1) (1 -- 3)))
+         (list_size (pure (n - 1)) (0 -- 4))
+         (list_size (pure 1) (1 -- 4)))
     (*genere un monome ou le degres de la variable principale est non nul*))
 
 let compare_pair ((_, u) : int * int list) ((_, v) : int * int list) : int =
@@ -712,12 +712,12 @@ let c3 =
 
 let c4 =
   ( Polynomes.mk_polynomes (Array.to_list variables)
-      [ (1, [ 1; 1; 1 ]); (-1, [ 0; 0; 0 ]) ],
+      [ (-6, [ 2; 0; 2 ]); (10, [ 1; 2; 1 ]); (10, [ 1; 1; 0 ]) ],
     Constraint.Equal )
 
 let c5 =
   ( Polynomes.mk_polynomes (Array.to_list variables)
-      [ (1, [ 0; 0; 0 ]); (1, [ 0; 1; 1 ]) ],
+      [ (2, [ 3; 2; 0 ]); (4, [ 1; 0; 3 ]) ],
     Constraint.Less )
 
 let s = Polynomes.Assignment.of_list [ (x, Real.of_int 0) ]
@@ -777,13 +777,11 @@ let test_index_c1 =
 
 (* Group all the tests together *)
 let covering_suite =
-  [
-    (*test_basile;*)
+  [ (*test_basile;*)
     (*test_get_unsat_intervals*)
     (*; test_sample_point ; petit_test *)
     (*test_compute_good_covering*)
-    test_algorithme2;
-  ]
+    (*test_algorithme2;*) ]
 
 (*
 let () =
@@ -791,9 +789,9 @@ let () =
   Constraint.sat_to_assignment resultat;
   flush_all ()*)
 
-(*let s =
-  let resultat = Constraint.get_unsat_cover [| c4   |]  variables 
- in Format.printf "%s @."(Constraint.show_sat_or_unsat resultat)*)
+let s =
+  let resultat = Constraint.get_unsat_cover [| c4; c5 |] variables in
+  Format.printf "%s @." (Constraint.show_sat_or_unsat resultat)
 
 (*let result_algo6 = Polynomes.required_coefficient s p 
 let sortie_alg6 = Polynomes.string_of_polynomial_list (Polynomes.to_list result_algo6)

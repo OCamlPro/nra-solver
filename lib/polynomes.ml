@@ -111,8 +111,11 @@ let create () =
   P.create ~ctx:poly_ctx (* No argument needed now for zero poly *)
 
 let zero_poly = create ()
+
 let add p1 p2 = P.add ~ctx:poly_ctx p1 p2
+
 let mul p1 p2 = P.mul ~ctx:poly_ctx p1 p2
+
 let sub p1 p2 = P.sub ~ctx:poly_ctx p1 p2
 let div p1 p2 = P.div ~ctx:poly_ctx p1 p2
 let neg p = P.neg ~ctx:poly_ctx p
