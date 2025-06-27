@@ -416,6 +416,9 @@ module S = Set.Make (struct
     | Exact a, Exact b -> Real.compare a b
 end)
 
+let val_pick (i : interval) : Real.t =
+  match i with Open (l, u) -> sample_interval l u | Exact a -> a
+
 (* (-linf, 7), (3 , 5 ), (4, 6)*)
 (*
 

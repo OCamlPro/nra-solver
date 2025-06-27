@@ -1,6 +1,8 @@
 type t
-type variable = Libpoly.Variable.t
+type variable = Polynomes.Var.t
 type term
+type sigma = Equal | Less
+type contraint = Polynomes.t * sigma
 
 val create : unit -> t
 val create_variable : t -> string -> variable
@@ -22,6 +24,24 @@ val assert_leq : t -> term -> term -> unit
 val assert_gt : t -> term -> term -> unit
 val assert_geq : t -> term -> term -> unit
 
+type res =
+  | Sat of (Polynomes.Var.t * Real.t) list
+  | Unsat of Covering.intervalPoly list
+
+val get_unsat_intervals :
+  t -> contraint array -> Polynomes.Assignment.t -> Covering.intervalPoly list
+
+val construct_characterization :
+  t -> Polynomes.Assignment.t -> Covering.intervalPoly list -> Polynomes.Set.t
+
+val interval_from_charachterization :
+  variable ->
+  Polynomes.Assignment.t ->
+  Real.t ->
+  Polynomes.Set.t ->
+  Covering.intervalPoly
+
+val get_unsat_cover : t -> res
 (*
   let t = create () in
   let x = create_variable t "x" in
@@ -32,9 +52,9 @@ val assert_geq : t -> term -> term -> unit
   assert_neq t p q; (* p <> q *)
   solve t
 *)
-
+ 
 type solve_result =
-  | Sat  (** The problem is satisfiable. *)
+  | Sat  of (Polynomes.Var.t * Real.t) list (** The problem is satisfiable. *)
   | Unsat  (** The problem is not satisfiable. *)
   | Unknown
       (** The problem was not solved. The goal is to implement a {b complete}

@@ -27,7 +27,7 @@
     zarith
     (flint (>= 0.4))
     libpoly_bindings
-    (topkg (< 1.0.8))
+    topkg
     cmdliner
     (qcheck :with-test)
     (odoc :with-doc)

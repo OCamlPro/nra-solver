@@ -39,6 +39,7 @@ val sort_intervals1 : interval list -> interval list
 val interval_to_intervalPoly : interval -> Polynomes.t -> intervalPoly
 val intervalpoly_to_interval : intervalPoly list -> interval list 
 val compute_cover : intervalPoly list -> intervalPoly list 
+val val_pick : interval -> Real.t 
 
 val length : interval -> Real.t
 (** [length i] computes the length of the interval [i]. raise invalide argument
