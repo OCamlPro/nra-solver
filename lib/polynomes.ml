@@ -1,142 +1,121 @@
 module P = Libpoly.Polynomial
 
 type t = Libpoly.Polynomial.t
-type ctx = P.Context.t
 
-(* --- Define global context components --- *)
-let var_db = Libpoly.Variable.Db.create ()
-let var_order = Libpoly.Variable.Order.create ()
+type ctx = {
+  poly_ctx : Libpoly.Polynomial.Context.t;
+  var_db : Libpoly.Variable.Db.t;
+  var_order : Libpoly.Variable.Order.t;
+}
 
-(* Define the polynomial context using the created db and order *)
-let poly_ctx =
-  Libpoly.Polynomial.Context.create
-    ~ring:Libpoly.Ring.lp_Z (* Use the default integer ring *)
-    var_db var_order
 (* ---------------------------------------- *)
 
-let create_context = Libpoly.Polynomial.Context.create
+let create_context () =
+  let var_db = Libpoly.Variable.Db.create () in
+  let var_order = Libpoly.Variable.Order.create () in
+  (* Define the polynomial context using the created db and order *)
+  let poly_ctx =
+    Libpoly.Polynomial.Context.create
+      ~ring:Libpoly.Ring.lp_Z (* Use the default integer ring *)
+      var_db var_order
+  in
+  { poly_ctx; var_db; var_order }
 
 module Var = struct
   type t = Libpoly.Variable.t
 
-  let ctr = ref 0
-  let get_name = Libpoly.Variable.Db.get_name var_db
-  let tbl : (int, t) Hashtbl.t = Hashtbl.create 17
+  let pp ctx ppf v =
+    let s = Libpoly.Variable.Db.get_name ctx.var_db v in
+    Fmt.pf ppf "%s" s
 
-  let create var_db tbl =
-    let cnt = ref 0 in
-    fun name ->
-      let var = Libpoly.Variable.Db.new_variable var_db name in
-      incr cnt;
-      Format.printf "thamtoth: %d -> %s@." !cnt
-        (Libpoly.Variable.Db.get_name var_db var);
-      Hashtbl.add tbl !cnt var;
-      var
-
-  let compare = Libpoly.Variable.Order.compare_variables var_order
-
-  let of_index i =
-    (*Format.printf "argaz : %i @." i;*)
-    Hashtbl.find tbl i
+  let create ctx name = Libpoly.Variable.Db.new_variable ctx.var_db name
+  let compare ctx = Libpoly.Variable.Order.compare_variables ctx.var_order
 end
 
-let of_int i =
+let of_int ctx i =
   let m =
-    Libpoly.Polynomial.Monomial.create ~ctx:poly_ctx
+    Libpoly.Polynomial.Monomial.create ~ctx:ctx.poly_ctx
       (Libpoly.Integer.of_z (Z.of_int i))
       []
   in
-  Libpoly.Polynomial.of_list ~ctx:poly_ctx [ m ]
+  Libpoly.Polynomial.of_list ~ctx:ctx.poly_ctx [ m ]
 
-let one = of_int 1
-let zero = of_int 0
+let one ctx = of_int ctx 1
+let zero ctx = of_int ctx 0
 
 module Assignment = struct
-  module M = struct
-    include Map.Make (struct
-      type t = Var.t
+  type t = (Libpoly.Variable.t * Real.t) list
 
-      let compare = Var.compare
-    end)
+  let of_list l = l
+  let to_list l = l
 
-    let of_list l = of_seq @@ List.to_seq l
-    let to_list t = List.of_seq @@ to_seq t
-  end
-
-  type t = Real.t M.t
-
-  let of_list (l : (Var.t * Real.t) list) = M.of_list l
-  let to_list = M.to_list
-
-  (*let v1 = Var.create "v1"
-  let v2 = Var.create "v2"
-  let v3 = Var.create "v3"
-
-  let assign : t =
-    M.of_list [ (v1, Real.of_int 4); (v2, Real.of_int 5); (v3, Real.of_int 6) ]*)
-
-  let empty_assignment = Libpoly.Assignment.create var_db
-
-  let to_libpoly_assignment (t : t) : Libpoly.Assignment.t =
-    let r = Libpoly.Assignment.create var_db in
-    M.iter (fun x v -> Libpoly.Assignment.add r x v) t;
+  let to_libpoly_assignment ctx (t : t) : Libpoly.Assignment.t =
+    let r = Libpoly.Assignment.create ctx.var_db in
+    List.iter (fun (x, v) -> Libpoly.Assignment.add r x v) t;
     r
 
-  let empty = M.empty
-  let add = M.add
+  let empty = []
+  let add x v l = (x, v) :: l
 
-  let pp_assignment ppf (assign : t) : unit =
-    let libpoly_assign = to_libpoly_assignment assign in
+  let pp_assignment ctx ppf (assign : t) : unit =
+    let libpoly_assign = to_libpoly_assignment ctx assign in
 
     let s = Libpoly.Assignment.to_string libpoly_assign in
 
     Format.fprintf ppf "%s" s
 end
 
-let create_context = P.Context.create
 let equal = P.Context.equal
-let create_monomial coeff vars = P.Monomial.create ~ctx:poly_ctx coeff vars
-let evaluate t a = P.evaluate t @@ Assignment.to_libpoly_assignment a
-let sgn t a = P.sgn t @@ Assignment.to_libpoly_assignment a
 
-let resultant p q =
+let create_monomial ctx coeff vars =
+  P.Monomial.create ~ctx:ctx.poly_ctx coeff vars
+
+let evaluate ctx t a = P.evaluate t @@ Assignment.to_libpoly_assignment ctx a
+let sgn ctx t a = P.sgn t @@ Assignment.to_libpoly_assignment ctx a
+
+let resultant ctx p q =
   (*let str1 = P.to_string p in
   Format.printf " premier poly pour calcule de resultant :%s  @." str1;
   let str2 = P.to_string q in
   Format.printf "dexieme poly pour calcule de resultant : %s   @." str2;*)
-  P.resultant ~ctx:poly_ctx p q
+  P.resultant ~ctx:ctx.poly_ctx p q
 
-let gcd p1 p2 = P.gcd ~ctx:poly_ctx p1 p2
-let of_list monomials = P.of_list ~ctx:poly_ctx monomials
+let gcd ctx p1 p2 = P.gcd ~ctx:ctx.poly_ctx p1 p2
+let of_list ctx monomials = P.of_list ~ctx:ctx.poly_ctx monomials
 let fold = P.fold
-let create_simple = P.create_simple
-let create = P.create (* No argument needed now for zero poly *)
-let zero_poly = create ~ctx:poly_ctx
+let create_simple ctx = P.create_simple ~ctx:ctx.poly_ctx
+
+let create ctx =
+  P.create ~ctx:ctx.poly_ctx (* No argument needed now for zero poly *)
+
+let zero ctx = create ctx
+let app1 f ctx = f ~ctx:ctx.poly_ctx
 
 (*j'ai enlevé le ctx*)
-let add = P.add
-let mul = P.mul
-let sub = P.sub
-let div = P.div
-let neg = P.neg
-let reductum = P.reductum
-let derivative = P.derivative
-let primitive = P.pp
-(*j'ai enlevé le ctx*)
+let add = app1 P.add
+let mul = app1 P.mul
+let sub = app1 P.sub
+let div = app1 P.div
+let neg = app1 P.neg
+let reductum = app1 P.reductum
+let derivative = app1 P.derivative
+let primitive = app1 P.pp
 
+(* FIXME *)
+(*j'ai enlevé le ctx*)
 let degree = P.degree
-let is_constant = P.is_constant
-let is_zero = P.is_zero
+let is_constant p = P.is_constant p = 1
+let is_zero p = P.is_zero p = 1
 
 let disc ctx p =
-  if degree p = 1 then of_int 1 else resultant p (derivative ~ctx p)
+  if degree p = 1 then of_int ctx 1 else resultant ctx p (derivative ctx p)
 
 let top_variable = P.top_variable
-let eq = P.eq
-let get_coefficient = P.get_coefficient
+let equal p q = P.eq p q = 1
+let get_coefficient ctx = P.get_coefficient ~ctx:ctx.poly_ctx
 
-let roots_isolate p assignment =
-  P.roots_isolate p @@ Assignment.to_libpoly_assignment assignment
+let roots_isolate ctx p assignment =
+  P.roots_isolate p @@ Assignment.to_libpoly_assignment ctx assignment
 
 let to_string = P.to_string
 let pp ppf (p : t) = Format.fprintf ppf "%s" (to_string p)
@@ -149,25 +128,23 @@ let mk_assignment (variables : Var.t list) (l : int list) : Assignment.t =
   let l =
     List.fold_left2 (fun acc v n -> (v, Real.of_int n) :: acc) [] variables l
   in
-  Assignment.M.of_list l
+  Assignment.of_list l
 
-let rec mult_list_polynomes (n : int) (l : t list) : t =
+let rec mult_list_polynomes ctx (n : int) (l : t list) : t =
   match l with
-  | [] -> of_int n
-  | p :: l -> mul ~ctx:poly_ctx p (mult_list_polynomes n l)
+  | [] -> of_int ctx n
+  | p :: l -> mul ctx p (mult_list_polynomes ctx n l)
 
-let mk_monomes (variables : Var.t list) ((coeff, degres) : int * int list) =
+let mk_monomes ctx (variables : Var.t list) ((coeff, degres) : int * int list) =
   let l =
     List.fold_left2
       (fun acc v d ->
         if d = 0 then acc
-        else
-          create_simple ~ctx:poly_ctx (Libpoly.Integer.of_z (Z.of_int 1)) v d
-          :: acc)
+        else create_simple ctx (Libpoly.Integer.of_z (Z.of_int 1)) v d :: acc)
       [] variables degres
   in
 
-  mult_list_polynomes coeff l
+  mult_list_polynomes ctx coeff l
 
 (*
 let degres_array = Array.of_list degres in
@@ -206,11 +183,12 @@ end)
 let to_list t = List.of_seq @@ Set.to_seq t
 let of_list l = Set.of_seq @@ List.to_seq l
 
-let rec mk_polynomes (variables : Var.t list) (l : (int * int list) list) : t =
+let rec mk_polynomes ctx (variables : Var.t list) (l : (int * int list) list) :
+    t =
   match l with
-  | [] -> zero
+  | [] -> zero ctx
   | m :: l ->
-      add ~ctx:poly_ctx (mk_monomes variables m) (mk_polynomes variables l)
+      add ctx (mk_monomes ctx variables m) (mk_polynomes ctx variables l)
 
 exception Break of Set.t
 
@@ -218,16 +196,15 @@ exception Break of Set.t
 let required_coefficient ctx (s : Assignment.t) (p : t) =
   let result = ref Set.empty in
   let q = ref p in
-  let zero_poly = create ~ctx:poly_ctx in
 
   try
-    while eq !q zero_poly <> 1 do
+    while not @@ equal !q (zero ctx) do
       let m = degree !q in
       (*Format.printf " %d le degré de yz + 1 @. " m ; *)
-      let lc = get_coefficient ~ctx:poly_ctx !q m in
+      let lc = get_coefficient ctx !q m in
       (*Format.printf " %s le coeff dom de  yz + 1 @. " (to_string lc )  ;*)
       result := Set.add lc !result;
-      if sgn lc s <> 0 then raise (Break !result) else q := reductum ~ctx !q
+      if sgn ctx lc s <> 0 then raise (Break !result) else q := reductum ctx !q
     done;
     !result
   with Break l -> l

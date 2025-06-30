@@ -49,15 +49,15 @@ let process_term t ~const ~app ?file ?loc st (defn : Term.t) =
 let rec process_bool_term t ?file ?loc st defn =
   match Ty.view (Term.ty defn) with
   | `Prop ->
-      process_term t ~const:process_bool_const ~app:process_bool_app ?file ?loc st
-        defn
+      process_term t ~const:process_bool_const ~app:process_bool_app ?file ?loc
+        st defn
   | _ -> Loop.State.error ?file ?loc st unsupported_statement "non-boolean term"
 
 and process_real_term t ?file ?loc st defn =
   match Ty.view (Term.ty defn) with
   | `Real ->
-      process_term t ~const:process_real_const ~app:process_real_app ?file ?loc st
-        defn
+      process_term t ~const:process_real_const ~app:process_real_app ?file ?loc
+        st defn
   | _ -> Loop.State.error ?file ?loc st unsupported_statement "non-real term"
 
 and process_bool_const _t ?file ?loc st (_cst : Term.Const.t) =
@@ -66,9 +66,7 @@ and process_bool_const _t ?file ?loc st (_cst : Term.Const.t) =
 and process_bool_app t ?file ?loc st (fn : Term.Const.t) (xs : _ list) =
   match (fn.builtin, xs) with
   | B.And, _ ->
-      List.fold_left
-        (fun st x -> process_bool_term t ?file ?loc st x)
-        st xs
+      List.fold_left (fun st x -> process_bool_term t ?file ?loc st x) st xs
   | B.Equal, [ x; y ] ->
       let x_term = process_real_term t ?file ?loc st x in
       let y_term = process_real_term t ?file ?loc st y in
@@ -221,7 +219,11 @@ let process_stmts t st stmts =
           let result = Nra_solver.solve t in
           Fmt.pr "%s@."
             (match result with
-            | Sat _ -> "sat"
+            | Sat s -> let s' = Nra_solver.Polynomes.Assignment.of_list s in 
+              let s'' = Nra_solver.Polynomes.Assignment.to_libpoly_assignment (Nra_solver.t_to_poly_ctx t) s' in 
+              Libpoly.Assignment.to_string s'' 
+              
+              
             | Unsat -> "unsat"
             | Unknown -> "unknown");
           st

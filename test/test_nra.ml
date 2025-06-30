@@ -546,11 +546,11 @@ let gen_degres_coeff_main_var_non_nul (n : int) : (int * int list) Gen.t =
 let compare_pair ((_, u) : int * int list) ((_, v) : int * int list) : int =
   List.compare Int.compare u v
 
-let x = Polynomes.Var.create "x"
+(*let x = Polynomes.Var.create "x"
 let y = Polynomes.Var.create "y"
 let z = Polynomes.Var.create "z"
 let variables = [| x; y; z |]
-let variables_without_z = [ x; y ]
+let variables_without_z = [ x; y ]*)
 
 let gen_list_monomes (n : int) : (int * int list) list Gen.t =
   Gen.map2
@@ -560,67 +560,79 @@ let gen_list_monomes (n : int) : (int * int list) list Gen.t =
     (Gen.list_size (Gen.pure 1) (gen_degres_coeff_main_var_non_nul n))
 (* le derner element de la liste est un monome qui a le dernier deg non nul *)
 
-let gen_poly (n : int) : Polynomes.t Gen.t =
+let gen_poly (t : Nra_solver.t) : Polynomes.t Gen.t =
+  let vars = Nra_solver.variables t in
   (* n : nombre des variables*)
+  let n = Array.length vars in
   Gen.bind (gen_list_monomes n) (fun l ->
       let l' = List.sort_uniq compare_pair l in
-      Gen.pure (Polynomes.mk_polynomes (Array.to_list variables) l'))
 
-let gen_constraint (n : int) : Constraint.contraint Gen.t =
-  Gen.bind (gen_poly n) (fun p ->
+      Gen.pure
+        (Polynomes.mk_polynomes
+           (Nra_solver.t_to_poly_ctx t)
+           (Array.to_list vars) l'))
+
+let gen_constraint t : Nra_solver.contraint Gen.t =
+  Gen.bind (gen_poly t) (fun p ->
       Gen.frequency
         [
-          (2, Gen.pure (p, Constraint.Less)); (1, Gen.pure (p, Constraint.Equal));
+          (2, Gen.pure (p, Nra_solver.Less)); (1, Gen.pure (p, Nra_solver.Equal));
         ])
 
-let gen_array_constraints (n : int) : Constraint.contraint array Gen.t =
+let gen_array_constraints t : Nra_solver.contraint array Gen.t =
   Gen.bind
-    (Gen.array_size (Gen.pure 2) (gen_constraint n))
+    (Gen.array_size (Gen.pure 2) (gen_constraint t))
     (fun l -> Gen.pure l)
 
-let test_evaluation_constraints (l : Constraint.contraint array)
+let test_evaluation_constraints t (l : Nra_solver.contraint array)
     (s : Polynomes.Assignment.t) : bool =
   let l_list = Array.to_list l in
   let booleen_func c =
     let p, sigma = c in
     match sigma with
-    | Constraint.Equal -> Polynomes.sgn p s = 0
-    | Constraint.Less -> Polynomes.sgn p s < 0
+    | Nra_solver.Equal -> Polynomes.sgn (Nra_solver.t_to_poly_ctx t) p s = 0
+    | Nra_solver.Less -> Polynomes.sgn (Nra_solver.t_to_poly_ctx t) p s < 0
   in
   List.for_all booleen_func l_list
 
-let test_solver (c : Constraint.contraint array)
-    (variables : Polynomes.Var.t array) : bool =
-  let res = Constraint.get_unsat_cover c variables in
-  Format.printf "%a @." Constraint.sat_to_assignment res;
+let test_solver t : bool =
+  let c = Nra_solver.t_to_constraints t in
+  let res = Nra_solver.solve t in
+  Format.printf "%s @." (Nra_solver.show_sat_or_unsat t res);
   match res with
-  | Constraint.Sat l ->
+  | Nra_solver.Sat l ->
       let s = Polynomes.Assignment.of_list l in
-      test_evaluation_constraints c s
-  | Constraint.Unsat _ -> true
+      test_evaluation_constraints t (Dynarray.to_array c) s
+  | Nra_solver.Unsat -> true
+  | Unknown -> false
 
-let gen_s (* assignment.t *) n : Polynomes.Assignment.t Gen.t =
+let gen_s (* assignment.t *) t : Polynomes.Assignment.t Gen.t =
+  let vars = Nra_solver.variables t in
+  let n = Array.length vars in
   Gen.bind
     (Gen.list_size (Gen.pure (n - 1)) (Gen.int_range (-50) 50))
-    (fun l -> Gen.pure (Polynomes.mk_assignment variables_without_z l))
+    (fun l ->
+      Gen.pure
+        (Polynomes.mk_assignment
+           (List.rev (List.tl (List.rev (Array.to_list vars))))
+           l))
 
-let gen_pair (n : int) :
-    (Constraint.contraint array * Polynomes.Assignment.t) Gen.t =
-  Gen.pair (gen_array_constraints n) (gen_s n)
+let gen_pair t : (Nra_solver.contraint array * Polynomes.Assignment.t) Gen.t =
+  Gen.pair (gen_array_constraints t) (gen_s t)
 
-let test_constraint (s : Polynomes.Assignment.t)
-    (c : Constraint.contraint array) (i : Covering.interval) : bool =
+let test_constraint t (s : Polynomes.Assignment.t)
+    (c : Nra_solver.contraint array) (i : Covering.interval) : bool =
   Array.for_all
-    (fun const -> Constraint.evaluate_contraint const s (Constraint.val_pick i))
+    (fun const -> Nra_solver.evaluate_contraint t const s (Covering.val_pick i))
     c
 
-let test_constraints (s : Polynomes.Assignment.t)
-    (c : Constraint.contraint array) (l : Covering.interval list) : bool =
+let test_constraints t (s : Polynomes.Assignment.t)
+    (c : Nra_solver.contraint array) (l : Covering.interval list) : bool =
   let l_arr = Array.of_list l in
   let n = Array.length l_arr in
   let rec loop i acc =
     if i < 0 then acc
-    else if not (test_constraint s c l_arr.(i)) then
+    else if not (test_constraint t s c l_arr.(i)) then
       loop (i - 1) (l_arr.(i) :: acc)
     else loop (i - 1) acc
   in
@@ -675,15 +687,17 @@ let test_sample_outside l =
   | None -> Covering.is_covering l
   | Some x -> if test_appartenance x l then false else true
 
-let pp_array_constraint ppf c = Constraint.pp_array_of_constraints ppf c
+let pp_array_constraint ppf c = Nra_solver.pp_array_of_constraints ppf c
 
-let pp_pair ppf ((c : Constraint.contraint array), (s : Polynomes.Assignment.t))
-    : unit =
+let pp_pair t ppf
+    ((c : Nra_solver.contraint array), (s : Polynomes.Assignment.t)) : unit =
   Format.fprintf ppf
     "(@[<v 0>c -> %a@ s -> %a@])" (* Nouvelle chaîne de format ici *)
-    pp_array_constraint c Polynomes.Assignment.pp_assignment s
+    pp_array_constraint c
+    (Polynomes.Assignment.pp_assignment (Nra_solver.t_to_poly_ctx t))
+    s
 
-let p1 =
+(*let p1 =
   Polynomes.mk_polynomes variables_without_z
     [ (-1, [ 2; 0 ]); (4, [ 0; 0 ]); (4, [ 0; 1 ]) ]
 
@@ -709,18 +723,51 @@ let c3 =
   ( Polynomes.mk_polynomes variables_without_z
       [ (1, [ 1; 0 ]); (2, [ 0; 0 ]); (-4, [ 0; 1 ]) ],
     Constraint.Less )
+*)
 
-let c4 =
-  ( Polynomes.mk_polynomes (Array.to_list variables)
-      [ (-6, [ 2; 0; 2 ]); (10, [ 1; 2; 1 ]); (10, [ 1; 1; 0 ]) ],
-    Constraint.Equal )
+let mon_test =
+  let t = Nra_solver.create () in
+  ignore (Nra_solver.create_variable t "x" : Nra_solver.variable);
+  ignore (Nra_solver.create_variable t "y" : Nra_solver.variable);
+  let variables = Nra_solver.variables t in
+  let p =
+    Polynomes.mk_polynomes
+      (Nra_solver.t_to_poly_ctx t)
+      (Array.to_list variables)
+      [ (1, [ 2; 0 ]); (1, [ 0; 2 ]) ]
+  in
+  Nra_solver.assert_lt t p (Polynomes.zero (Nra_solver.t_to_poly_ctx t));
+  let ans = Nra_solver.solve t in
+  let s = Nra_solver.show_sat_or_unsat t ans in
+  Format.printf "mon_test: %s @." s
 
+let mon_test2 =
+  let t = Nra_solver.create () in
+  ignore (Nra_solver.create_variable t "x" : Nra_solver.variable);
+
+  let p = Polynomes.of_int (Nra_solver.t_to_poly_ctx t) 1 in
+  Nra_solver.assert_eq t p (Polynomes.zero (Nra_solver.t_to_poly_ctx t));
+  let ans = Nra_solver.solve t in
+  let s = Nra_solver.show_sat_or_unsat t ans in
+  Format.printf "mon_test2: %s @." s
+
+
+
+let mon_test3 =
+  let t = Nra_solver.create () in
+  let p = Polynomes.of_int (Nra_solver.t_to_poly_ctx t) 1 in
+  Nra_solver.assert_eq t p (Polynomes.zero (Nra_solver.t_to_poly_ctx t));
+  let ans = Nra_solver.solve t in
+  let s = Nra_solver.show_sat_or_unsat t ans in
+  Format.printf "mon_test3: %s @." s
+(*
 let c5 =
   ( Polynomes.mk_polynomes (Array.to_list variables)
       [ (2, [ 3; 2; 0 ]); (4, [ 1; 0; 3 ]) ],
     Constraint.Less )
 
-let s = Polynomes.Assignment.of_list [ (x, Real.of_int 0) ]
+let s = Polynomes.Assignment.of_list [ (x, Real.of_int 0) ]*)
+
 (*let result = Constraint.get_unsat_intervals [| c1; c2; c3 |] s
 let gen_result = Gen.pure result
 
@@ -731,13 +778,18 @@ let petit_test =
       if Covering.intervalpoly_to_interval x = [] then true else false)*)
 
 let test_get_unsat_intervals =
-  let print = Fmt.to_to_string pp_pair in
-  Test.make ~print ~count:100 ~name:"get_unsat_interval marche" (gen_pair 3)
+  let t = Nra_solver.create () in
+
+  ignore (Nra_solver.create_variable t "x" : Nra_solver.variable);
+  ignore (Nra_solver.create_variable t "y" : Nra_solver.variable);
+  ignore (Nra_solver.create_variable t "z" : Nra_solver.variable);
+  let print = Fmt.to_to_string (pp_pair t) in
+  Test.make ~print ~count:100 ~name:"get_unsat_interval marche" (gen_pair t)
     (fun x ->
       let c, s = x in
       Format.printf "FOOO: %s@." (print x);
-      let l = Constraint.get_unsat_intervals c s in
-      test_constraints s c (Covering.intervalpoly_to_interval l))
+      let l = Nra_solver.get_unsat_intervals t c s in
+      test_constraints t s c (Covering.intervalpoly_to_interval l))
 
 let test_sample_point =
   let print = Fmt.to_to_string Covering.pp_intervals in
@@ -760,28 +812,45 @@ let test_compute_good_covering =
         (print y);
       Covering.is_good_covering y)
 
-let test_algorithme2 =
-  let print = Fmt.to_to_string Constraint.pp_array_of_constraints in
-  Test.make ~print ~count:10 ~name:"solver marche" (gen_array_constraints 3)
-    (fun x ->
-      Format.printf "mes contraints :  %s\n@." (print x);
-      test_solver x variables)
+let gen_problem =
+  Gen.(
+    unit >>= fun () ->
+    let t = Nra_solver.create () in
+    ignore (Nra_solver.create_variable t "x" : Nra_solver.variable);
+    ignore (Nra_solver.create_variable t "y" : Nra_solver.variable);
+    ignore (Nra_solver.create_variable t "z" : Nra_solver.variable);
+    let zero = Polynomes.zero (Nra_solver.t_to_poly_ctx t) in
+    let cs = generate1 (gen_array_constraints t) in
+    Array.iter
+      (fun (p, sigma) ->
+        match sigma with
+        | Nra_solver.Equal -> Nra_solver.assert_eq t p zero
+        | Nra_solver.Less -> Nra_solver.assert_lt t p zero)
+      cs;
+    pure t)
 
-let test_index_c1 =
+let test_algorithme2 =
+  let print = Fmt.to_to_string Nra_solver.pp in
+  Test.make ~print ~count:20 ~name:"solver marche" gen_problem (fun x ->
+      Format.printf "mes contraints : %a" Nra_solver.pp x;
+      test_solver x)
+
+(*let test_index_c1 =
   let print = Fmt.to_to_string Polynomes.pp in
   let p, _ = c1 in
   Test.make ~print ~count:100 ~name:"test index" (Gen.pure p) (fun x ->
       Polynomes.Var.compare (Polynomes.Var.of_index 2)
         (Polynomes.top_variable p)
-      = 0)
+      = 0)*)
 
 (* Group all the tests together *)
-let covering_suite =
-  [ (*test_basile;*)
-    (*test_get_unsat_intervals*)
-    (*; test_sample_point ; petit_test *)
-    (*test_compute_good_covering*)
-    (*test_algorithme2;*) ]
+let covering_suite = []
+
+(*test_basile;*)
+(*test_get_unsat_intervals*)
+(*; test_sample_point ; petit_test *)
+(*test_compute_good_covering*)
+(*test_algorithme2    ]*)
 
 (*
 let () =
@@ -789,9 +858,9 @@ let () =
   Constraint.sat_to_assignment resultat;
   flush_all ()*)
 
-let s =
+(*let s =
   let resultat = Constraint.get_unsat_cover [| c4; c5 |] variables in
-  Format.printf "%s @." (Constraint.show_sat_or_unsat resultat)
+  Format.printf "%s @." (Constraint.show_sat_or_unsat resultat)*)
 
 (*let result_algo6 = Polynomes.required_coefficient s p 
 let sortie_alg6 = Polynomes.string_of_polynomial_list (Polynomes.to_list result_algo6)
