@@ -42,7 +42,7 @@ let create_simple t coeff var exponent =
 
 module Term = struct
   let variable t v = create_simple t (Libpoly.Integer.of_z (Z.of_int 1)) v 1
-  let real t s = variable t (create_variable t s)
+  let real t s = let n = int_of_string s in Polynomes.of_int (t.poly_ctx) n 
   let add t p q = Polynomes.add t.poly_ctx p q
   let sub t p q = Polynomes.sub t.poly_ctx p q
   let mul t p q = Polynomes.mul t.poly_ctx p q
@@ -79,9 +79,10 @@ let assert_lt t p q =
 
 let assert_leq t p q =
   let r = Term.(sub t q p) in
-  (* p <= q <->  q - p >= 0 <-> il existe x tq  q - p = x^2*)
-  let r' = Term.variable t (create_variable t "x") in
-  let r'' = Term.add t r' r in
+  (* p <= q <->  q - p >= 0 <-> il existe y tq  q - p - y^2 = 0 *)
+  let r' = Term.variable t (create_variable t "y") in
+  let r' = Term.mul t r' r' in 
+  let r'' = Term.sub t r r' in
   if Polynomes.is_constant r then (
     let a = Polynomes.Assignment.empty in
     if Polynomes.sgn (t_to_poly_ctx t) r a < 0 then t.is_unsat <- true)
@@ -98,9 +99,10 @@ let assert_gt t p q =
 
 let assert_geq t p q =
   let r = Term.(sub t p q) in
-  (* p >= q <->  p - q >= 0 <-> il existe x tq  p - q = x^2*)
+  (* p >= q <->  p - q >= 0 <-> il existe x tq  p - q - x^2 = 0*)
   let r' = Term.variable t (create_variable t "x") in
-  let r'' = Term.add t r' r in
+  let r' = Term.mul t r' r' in 
+  let r'' = Term.sub t r r' in
   if Polynomes.is_constant r then (
     let a = Polynomes.Assignment.empty in
     if Polynomes.sgn (t_to_poly_ctx t) r a < 0 then t.is_unsat <- true)
@@ -128,23 +130,12 @@ let pp_constraint ppf (p, s) =
   | Equal -> Format.fprintf ppf " = 0)"
   | Less -> Format.fprintf ppf " < 0)"
 
-let pp_array_of_constraints ppf (constraints : contraint array) =
-  let len = Array.length constraints in
-  if len = 0 then
-    Format.fprintf ppf
-      "[]" (* Or just "" if you prefer empty output for empty array *)
-  else (
-    Format.fprintf ppf "@[<v>";
-    (* Open a vertical box for nice formatting *)
-    Array.iteri
-      (fun i c ->
-        pp_constraint ppf c;
-        if i < len - 1 then
-          Format.fprintf ppf "@\n" (* Print a newline for all but the last *))
-      constraints;
-    Format.fprintf ppf "@]" (* Close the vertical box *))
+let pp_array_of_constraints = Fmt.(iter ~sep:(fun ppf () -> Fmt.pf ppf "\n") Array.iter pp_constraint)
 
-let pp ppf t = pp_array_of_constraints ppf (Dynarray.to_array t.constraints)
+let pp ppf t = 
+  Fmt.pf ppf "Constraints: %a@." Fmt.(iter ~sep:(fun ppf () -> Fmt.pf ppf "\n") Dynarray.iter pp_constraint) t.constraints;
+  Fmt.pf ppf "Variables: %a@." Fmt.(box @@ iter ~sep:comma Dynarray.iter (Polynomes.Var.pp t.poly_ctx)) t.vars;
+  Fmt.pf ppf "is_unsat: %b@." t.is_unsat
 
 let list_coefficients t (c : contraint) : Polynomes.t list =
   let p, _ = c in
@@ -187,6 +178,10 @@ let rec list_intervals t c s (p : Polynomes.t) (l : Covering.interval list) acc
 
 let get_unsat_intervals t (c' : contraint array) (s : Polynomes.Assignment.t) :
     Covering.intervalPoly list =
+
+let str = (Fmt.to_to_string (pp_array_of_constraints)) c' in Format.printf "c' ------------> \n %s \n " str; 
+let str2 = Fmt.to_to_string (pp) t in Format.printf " t ---------> \n %s \n " str2; 
+  
   let s_list = Polynomes.Assignment.to_list s in
   let m = List.length s_list in
   let c =
@@ -325,7 +320,7 @@ let boucle2 t (l : Covering.intervalPoly list) : Polynomes.Set.t =
   loop 0 Polynomes.Set.empty
 
 let construct_characterization t (s : Polynomes.Assignment.t)
-    (i_list : Covering.intervalPoly list) : Polynomes.Set.t =
+    (i_list : Covering.intervalPoly list) : Polynomes.Set.t = 
   (*let str3 = Covering.show_intervals_poly i_list in
                     Format.printf "%s le recouvrement  @." str3;*)
   let good_cover = Covering.compute_cover i_list in
@@ -365,6 +360,8 @@ let construct_characterization t (s : Polynomes.Assignment.t)
   Polynomes.Set.filter
     (fun x -> if Polynomes.is_constant x then false else true)
     l''
+
+    
 
 (*#######"#"#"#"##"##"#*************************************************************************)
 (*#######"#"#"#"##"##"#*************************************************************************)
@@ -429,7 +426,10 @@ let assert_top_variable t (p_set : Polynomes.Set.t) (v : Polynomes.Var.t) =
 
 let interval_from_charachterization t (v : Polynomes.Var.t)
     (s : Polynomes.Assignment.t) (si : Real.t) (p_set : Polynomes.Set.t) :
-    Covering.intervalPoly =
+    Covering.intervalPoly =  
+
+
+   
   let pi =
     Polynomes.Set.filter
       (fun x ->
@@ -479,7 +479,7 @@ let interval_from_charachterization t (v : Polynomes.Var.t)
         l_set = l_set_result;
         p_set = pi;
         p_orthogonal_set = p_orthogonal;
-      }
+      } 
 
 (*#######"#"#"#"##"##"#*************************************************************************)
 (*#######"#"#"#"##"##"#*************************************************************************)
@@ -491,18 +491,20 @@ type res =
 
 let get_unsat_cover t : res =
   let c = Dynarray.to_array t.constraints in
+  
   let variables = Dynarray.to_array t.vars in
   let n = Array.length variables in
   let rec loop (s : (Polynomes.Var.t * Real.t) list) acc =
+    let str = (Fmt.to_to_string (pp_array_of_constraints)) c in Format.printf " blablabla -------------------------------------------------------------> \n %s \n " str; 
     let i = List.length s in
-    (*let amchich = Covering.intervalpoly_to_interval acc in
-                (*let str1 = Covering.show_intervals amchich in
-                Format.printf " %s amchich : @." str1;*)
+   (* let amchich = Covering.intervalpoly_to_interval acc in
+                let str1 = Covering.show_intervals amchich in
+                Format.printf " %s sortie de algo3 : @." str1;
             
                 let afrukh = Covering.compute_good_covering amchich in
-               (* let str = Covering.show_intervals afrukh in
-                Format.printf " %s afrukh : @." str;*)*)
-    (*Fmt.pr "igeni: %a@." Covering.pp_intervals_poly acc;*)
+               let str = Covering.show_intervals afrukh in
+                Format.printf " %s le good covering de la sortie de l'algo 3 : @." str;*)
+    Fmt.pr "la sortie de l'algorithme 3 : %a@." Covering.pp_intervals_poly acc;
     let si = Covering.sample_outside (Covering.intervalpoly_to_interval acc) in
     (*Fmt.pr "lqa3a: %s --> %a@." (Polynomes.Var.get_name variables.(i)) Fmt.(option ~none:(fun ppf () -> Fmt.pf ppf "NONE") Real.pp) si;*)
 
@@ -517,8 +519,7 @@ let get_unsat_cover t : res =
           let acc1 =
             get_unsat_intervals t c (Polynomes.Assignment.of_list s')
           in
-          let f = loop s' acc1 in
-          match f with
+          match loop s' acc1 with
           | Sat s'' -> Sat s''
           | Unsat i ->
               let r =
@@ -549,7 +550,8 @@ let get_unsat_cover t : res =
 
 type solve_result = Sat of (Polynomes.Var.t * Real.t) list | Unsat | Unknown
 
-let solve t : solve_result =
+let solve (t : t) =
+  
   if t.is_unsat then Unsat 
   else
     match get_unsat_cover t with Sat x -> Sat x | Unsat _ -> Unsat

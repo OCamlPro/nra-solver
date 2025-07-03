@@ -725,7 +725,7 @@ let c3 =
     Constraint.Less )
 *)
 
-let mon_test =
+(*let mon_test =
   let t = Nra_solver.create () in
   ignore (Nra_solver.create_variable t "x" : Nra_solver.variable);
   ignore (Nra_solver.create_variable t "y" : Nra_solver.variable);
@@ -739,27 +739,38 @@ let mon_test =
   Nra_solver.assert_lt t p (Polynomes.zero (Nra_solver.t_to_poly_ctx t));
   let ans = Nra_solver.solve t in
   let s = Nra_solver.show_sat_or_unsat t ans in
-  Format.printf "mon_test: %s @." s
+  Format.printf "mon_test: %s @." s *)
 
 let mon_test2 =
   let t = Nra_solver.create () in
   ignore (Nra_solver.create_variable t "x" : Nra_solver.variable);
+  ignore (Nra_solver.create_variable t "y" : Nra_solver.variable);
 
-  let p = Polynomes.of_int (Nra_solver.t_to_poly_ctx t) 1 in
-  Nra_solver.assert_eq t p (Polynomes.zero (Nra_solver.t_to_poly_ctx t));
+  let vars = Nra_solver.variables t in 
+
+  let p2 = Polynomes.mk_polynomes (Nra_solver.t_to_poly_ctx t) (Array.to_list vars) [( 1,[0 ; 1])] in
+  Nra_solver.assert_gt t p2 (Polynomes.zero (Nra_solver.t_to_poly_ctx t));
+  let p1 = Polynomes.mk_polynomes (Nra_solver.t_to_poly_ctx t) (Array.to_list vars) [( 1,[1 ; 0])] in
+  Nra_solver.assert_gt t p1 (Polynomes.zero (Nra_solver.t_to_poly_ctx t));
+
+  let p4 = Polynomes.mk_polynomes (Nra_solver.t_to_poly_ctx t) (Array.to_list vars) [( 1,[1 ; 0]) ;( 1,[0 ; 1]) ] in
+  Nra_solver.assert_eq t p4 (Polynomes.zero (Nra_solver.t_to_poly_ctx t));
+
+
+  Fmt.pr "Contexte: %a@." Nra_solver.pp t;
   let ans = Nra_solver.solve t in
   let s = Nra_solver.show_sat_or_unsat t ans in
   Format.printf "mon_test2: %s @." s
 
 
 
-let mon_test3 =
+(*let mon_test3 =
   let t = Nra_solver.create () in
   let p = Polynomes.of_int (Nra_solver.t_to_poly_ctx t) 1 in
   Nra_solver.assert_eq t p (Polynomes.zero (Nra_solver.t_to_poly_ctx t));
   let ans = Nra_solver.solve t in
   let s = Nra_solver.show_sat_or_unsat t ans in
-  Format.printf "mon_test3: %s @." s
+  Format.printf "mon_test3: %s @." s*)
 (*
 let c5 =
   ( Polynomes.mk_polynomes (Array.to_list variables)

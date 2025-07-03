@@ -216,6 +216,7 @@ let process_stmts t st stmts =
       | `Clause _clause ->
           Loop.State.error ~file ~loc st unsupported_statement "clause"
       | `Solve ([], []) ->
+          Fmt.pr "Contexte: %a@." Nra_solver.pp t;
           let result = Nra_solver.solve t in
           Fmt.pr "%s@."
             (match result with
