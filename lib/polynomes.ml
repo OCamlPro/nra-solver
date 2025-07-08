@@ -32,18 +32,15 @@ module Var = struct
   let compare ctx = Libpoly.Variable.Order.compare_variables ctx.var_order
 end
 
-let of_int ctx i =
+let of_int ctx z =
   let m =
     Libpoly.Polynomial.Monomial.create ~ctx:ctx.poly_ctx
-      (Libpoly.Integer.of_z (Z.of_int i))
-      []
+      (Libpoly.Integer.of_z z) []
   in
   Libpoly.Polynomial.of_list ~ctx:ctx.poly_ctx [ m ]
 
-   
-
-let one ctx = of_int ctx 1
-let zero ctx = of_int ctx 0
+let one ctx = of_int ctx Z.one
+let zero ctx = of_int ctx Z.zero
 
 module Assignment = struct
   type t = (Libpoly.Variable.t * Real.t) list
@@ -59,13 +56,15 @@ module Assignment = struct
   let empty = []
   let add x v l = (x, v) :: l
 
-  let pp_assignment ctx ppf (assign : t) : unit =
+  let pp_assignment   ctx ppf (assign : t) : unit =
     let libpoly_assign = to_libpoly_assignment ctx assign in
 
     let s = Libpoly.Assignment.to_string libpoly_assign in
 
     Format.fprintf ppf "%s" s
 end
+
+
 
 let equal = P.Context.equal
 
@@ -110,7 +109,7 @@ let is_constant p = P.is_constant p = 1
 let is_zero p = P.is_zero p = 1
 
 let disc ctx p =
-  if degree p = 1 then of_int ctx 1 else resultant ctx p (derivative ctx p)
+  if degree p = 1 then of_int ctx Z.one else resultant ctx p (derivative ctx p)
 
 let top_variable = P.top_variable
 let equal p q = P.eq p q = 1
@@ -134,7 +133,7 @@ let mk_assignment (variables : Var.t list) (l : int list) : Assignment.t =
 
 let rec mult_list_polynomes ctx (n : int) (l : t list) : t =
   match l with
-  | [] -> of_int ctx n
+  | [] -> of_int ctx (Z.of_int n)
   | p :: l -> mul ctx p (mult_list_polynomes ctx n l)
 
 let mk_monomes ctx (variables : Var.t list) ((coeff, degres) : int * int list) =

@@ -135,7 +135,10 @@ and process_real_app (t : Nra_solver.t) ?file ?loc st (fn : Term.Const.t)
   | B.Div `Real, [ x; y ] ->
       let x_term = process_real_term t ?file ?loc st x in
       let y_term = process_real_term t ?file ?loc st y in
-      Nra_solver.Term.div t x_term y_term
+      let w = Nra_solver.create_variable t "w" |> Nra_solver.Term.variable t in
+      let p = Nra_solver.Term.(sub t (mul t y_term w) x_term) in
+      Nra_solver.assert_eq t p (Nra_solver.Term.real t "0");
+      w
   | _ ->
       Loop.State.error ?file ?loc st unsupported_statement
         "unknown or unsupported real operator/arity"
@@ -216,17 +219,23 @@ let process_stmts t st stmts =
       | `Clause _clause ->
           Loop.State.error ~file ~loc st unsupported_statement "clause"
       | `Solve ([], []) ->
-          Fmt.pr "Contexte: %a@." Nra_solver.pp t;
-          let result = Nra_solver.solve t in
-          Fmt.pr "%s@."
-            (match result with
-            | Sat s -> let s' = Nra_solver.Polynomes.Assignment.of_list s in 
-              let s'' = Nra_solver.Polynomes.Assignment.to_libpoly_assignment (Nra_solver.t_to_poly_ctx t) s' in 
-              Libpoly.Assignment.to_string s'' 
-              
-              
-            | Unsat -> "unsat"
-            | Unknown -> "unknown");
+          (*Fmt.pr "Contexte: %a@." Nra_solver.pp t;*)
+          (match Nra_solver.solve t with
+          | Sat s ->
+              let s' = Nra_solver.Polynomes.Assignment.of_list s in
+              let a =
+                Nra_solver.Polynomes.Assignment.to_libpoly_assignment
+                  (Nra_solver.t_to_poly_ctx t)
+                  s'
+              in
+              Fmt.pr "sat %s@."
+                (Libpoly.Assignment.to_string a
+                ^ (Fmt.to_to_string Nra_solver.pp) t)
+          | Unsat ->
+              Fmt.pr "Unsat %s @."
+                ("Unsat :" ^ (Fmt.to_to_string Nra_solver.pp) t)
+          | Unknown -> Fmt.pr "Unknown %s @."
+          (" :" ^ (Fmt.to_to_string Nra_solver.pp) t));
           st
       | `Solve (_hyps, _goals) ->
           Loop.State.error ~file ~loc st unsupported_statement

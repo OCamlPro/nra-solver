@@ -19,12 +19,23 @@ Submitted by Dejan Jovanovic for SMT-LIB.
 |)
 (set-info :category "industrial")
 (set-info :status unsat)
+(declare-fun skoX () Real)
 (declare-fun skoY () Real)
 (declare-fun skoZ () Real)
-(declare-fun skoX () Real)
-(assert (and 
-(<= (* skoZ skoY) 0) 
-(and (<= skoZ 2) 
-(and (<= skoY 2) (and (<= skoX 2) (and (<= 1 skoZ) (and (<= 1 skoY) (<= 1 skoX))))))))
+(assert 
+(and 
+(<= (* skoZ (* skoY (* skoX 0.5))) (- 0.25))
+(and 
+(<= skoZ 2) 
+(and 
+(<= skoY 2) 
+(and 
+(<= skoX 2) 
+(and 
+(<= 1 skoZ) 
+(and 
+(<= 1 skoY) 
+(<= 1 skoX))))))))
+
 (check-sat)
 (exit)

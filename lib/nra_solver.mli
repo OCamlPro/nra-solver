@@ -8,7 +8,7 @@ val create : unit -> t
 val create_variable : t -> string -> variable
 val variables : t -> variable array
 val t_to_poly_ctx : t -> Polynomes.ctx
-val t_to_constraints : t -> contraint Dynarray.t
+val t_to_constraints : t -> contraint Vect.t
 val pp : t Fmt.t
 
 module Term : sig
@@ -31,6 +31,7 @@ val assert_geq : t -> term -> term -> unit
 type res =
   | Sat of (Polynomes.Var.t * Real.t) list
   | Unsat of Covering.intervalPoly list
+  | Unknown 
 
 val evaluate_contraint :
   t -> contraint -> Polynomes.Assignment.t -> Real.t -> bool
@@ -38,7 +39,7 @@ val evaluate_contraint :
 val pp_array_of_constraints : Format.formatter -> contraint array -> unit
 
 val get_unsat_intervals :
-  t -> contraint array -> Polynomes.Assignment.t -> Covering.intervalPoly list
+  t -> Polynomes.Assignment.t -> Covering.intervalPoly list
 
 val construct_characterization :
   t -> Polynomes.Assignment.t -> Covering.intervalPoly list -> Polynomes.Set.t
@@ -48,8 +49,8 @@ val interval_from_charachterization :
   variable ->
   Polynomes.Assignment.t ->
   Real.t ->
-  Polynomes.Set.t ->
-  Covering.intervalPoly
+  Polynomes.Set.t -> 
+  Covering.intervalPoly option 
 
 val get_unsat_cover : t -> res
 (*
@@ -79,3 +80,4 @@ module Real : module type of Real
 module Constraint : module type of Constraint
 module Z_poly : module type of Z_poly
 module Polynomes : module type of Polynomes
+module Vect : module type of Vect

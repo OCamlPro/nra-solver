@@ -21,7 +21,13 @@ All problems have the following form: a certain polynomial has a zero where all 
 (declare-const h3 Real)
 (declare-const h2 Real)
 (declare-const h1 Real)
-(assert (and (> h1 0) (> h2 0) (> h3 0) (> h5 0) (> h6 0) (> j2 0) (= (+ (* (* 
+(assert (and (> h1 0)
+ (> h2 0)
+ (> h3 0) 
+ (> h5 0) 
+ (> h6 0) 
+ (> j2 0) 
+ (= (+ (* (* 
 h1 h1) h3 (* j2 j2)) (* 2 (* h1 h1) h3 j2) (* (* h1 h1) h3) (* (* h1 h1) h5 (* 
 j2 j2)) (* (* h1 h1) h5 j2) (* (* h1 h1) h6 (* j2 j2)) (* 2 (* h1 h1) h6 j2) (* 
 (* h1 h1) h6) (* h1 h2 h3 (* j2 j2)) (* 2 h1 h2 h3 j2) (* h1 h2 h3) (* 2 h1 h2 

@@ -22,7 +22,7 @@ module Assignment : sig
   val of_list : (Var.t * Real.t) list -> t
 end
 
-val of_int : ctx -> int -> t
+val of_int : ctx -> Z.t -> t
 val create_simple : ctx -> Libpoly.Integer.t -> Var.t -> int -> t
 val to_string : t -> string
 val string_of_polynomial_list : t list -> string

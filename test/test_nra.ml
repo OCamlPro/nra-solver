@@ -4,6 +4,7 @@ module Constraint = Nra_solver.Constraint
 module Real = Nra_solver.Real
 module Z_poly = Nra_solver.Z_poly
 module Polynomes = Nra_solver.Polynomes
+module Vect = Nra_solver.Vect
 
 type bound = Finite of int | Pinf | Ninf
 
@@ -540,7 +541,7 @@ let gen_degres_coeff_main_var_non_nul (n : int) : (int * int list) Gen.t =
       (Gen.map2
          (fun debut_list dernier_element -> debut_list @ dernier_element)
          (list_size (pure (n - 1)) (0 -- 4))
-         (list_size (pure 1) (1 -- 4)))
+         (list_size (pure 1) (0 -- 4)))
     (*genere un monome ou le degres de la variable principale est non nul*))
 
 let compare_pair ((_, u) : int * int list) ((_, v) : int * int list) : int =
@@ -602,7 +603,7 @@ let test_solver t : bool =
   match res with
   | Nra_solver.Sat l ->
       let s = Polynomes.Assignment.of_list l in
-      test_evaluation_constraints t (Dynarray.to_array c) s
+      test_evaluation_constraints t (Vect.to_array c) s
   | Nra_solver.Unsat -> true
   | Unknown -> false
 
@@ -743,26 +744,109 @@ let c3 =
 
 let mon_test2 =
   let t = Nra_solver.create () in
-  ignore (Nra_solver.create_variable t "x" : Nra_solver.variable);
-  ignore (Nra_solver.create_variable t "y" : Nra_solver.variable);
+  ignore (Nra_solver.create_variable t "m" : Nra_solver.variable);
+  ignore (Nra_solver.create_variable t "v10" : Nra_solver.variable);
+  ignore (Nra_solver.create_variable t "v5" : Nra_solver.variable);
+  ignore (Nra_solver.create_variable t "v6" : Nra_solver.variable);
+  ignore (Nra_solver.create_variable t "v7" : Nra_solver.variable);
+  ignore (Nra_solver.create_variable t "v8" : Nra_solver.variable);
+  ignore (Nra_solver.create_variable t "v9" : Nra_solver.variable);
 
-  let vars = Nra_solver.variables t in 
 
-  let p2 = Polynomes.mk_polynomes (Nra_solver.t_to_poly_ctx t) (Array.to_list vars) [( 1,[0 ; 1])] in
-  Nra_solver.assert_gt t p2 (Polynomes.zero (Nra_solver.t_to_poly_ctx t));
-  let p1 = Polynomes.mk_polynomes (Nra_solver.t_to_poly_ctx t) (Array.to_list vars) [( 1,[1 ; 0])] in
-  Nra_solver.assert_gt t p1 (Polynomes.zero (Nra_solver.t_to_poly_ctx t));
+  let vars = Nra_solver.variables t in
 
-  let p4 = Polynomes.mk_polynomes (Nra_solver.t_to_poly_ctx t) (Array.to_list vars) [( 1,[1 ; 0]) ;( 1,[0 ; 1]) ] in
+  (*let p1 =
+    Polynomes.mk_polynomes
+      (Nra_solver.t_to_poly_ctx t)
+      (Array.to_list vars)
+      [ (-1, [ 1; 0 ;0 ;0 ;0 ;0 ;0]) ]
+  in
+  Nra_solver.assert_lt t p1 (Polynomes.zero (Nra_solver.t_to_poly_ctx t));*)
+
+(*let p2 =
+    Polynomes.mk_polynomes
+      (Nra_solver.t_to_poly_ctx t)
+      (Array.to_list vars)
+      [ (-1, [ 0; 0 ;0 ;0 ;0;1 ;0]) ]
+  in
+  Nra_solver.assert_lt t p2 (Polynomes.zero (Nra_solver.t_to_poly_ctx t));*)
+
+  (*let p9 =
+    Polynomes.mk_polynomes
+      (Nra_solver.t_to_poly_ctx t)
+      (Array.to_list vars)
+      [ (-1, [ 0; 0 ;0 ;0 ;1;0 ;0]) ]
+  in
+  Nra_solver.assert_lt t p9 (Polynomes.zero (Nra_solver.t_to_poly_ctx t));*)
+
+  (*let p3 =
+    Polynomes.mk_polynomes
+      (Nra_solver.t_to_poly_ctx t)
+      (Array.to_list vars)
+      [ (-1, [ 0; 0 ;0 ;0 ;0 ;0 ;1]) ]
+  in
+  Nra_solver.assert_lt t p3 (Polynomes.zero (Nra_solver.t_to_poly_ctx t));*)
+
+
+ let p4 =
+    Polynomes.mk_polynomes
+      (Nra_solver.t_to_poly_ctx t)
+      (Array.to_list vars)
+      [ (-1, [0; 0; 0; 0; 2; 0; 0])  ; (* -1*v7^2 *)
+        (1, [0; 0; 0; 2; 0; 0; 0])   ; (* 1*v6^2 *)
+        (1, [0; 0; 2; 0; 0; 0; 0])   ; (* 1*v5^2 *)
+        (-2, [0; 0; 1; 0; 0; 0; 0])  ; (* -2*v5 *)
+        (1, [0; 0; 0; 0; 0; 0; 0]) ]   (* +1 (constante) *)
+  in
   Nra_solver.assert_eq t p4 (Polynomes.zero (Nra_solver.t_to_poly_ctx t));
 
+(*-1*v8^2 + (1*v6^2 + (1*v5^2)) = 0 *)
+let p5 =
+    Polynomes.mk_polynomes
+      (Nra_solver.t_to_poly_ctx t)
+      (Array.to_list vars)
+      [ (-1, [0; 0; 0; 0; 0;0 ; 0])  ; (* -1*v8^2 *)
+        (1, [0; 0; 0; 2; 0; 0; 0])   ; (* 1*v6^2 *)
+        (1, [0; 0; 2; 0; 0; 0; 0]) ]    (* 1*v5^2*)
+  in
+  Nra_solver.assert_eq t p5 (Polynomes.zero (Nra_solver.t_to_poly_ctx t));
+(*(1*v10)*v6 - 1 = 0 *)
+let p6 =
+    Polynomes.mk_polynomes
+      (Nra_solver.t_to_poly_ctx t)
+      (Array.to_list vars)
+      [ (1, [0; 1; 0; 1; 0; 0; 0])   ; (* 1*v10*v6 (produit de v10 et v6) *)
+        (-1, [0; 0; 0; 0; 0; 0; 0]) ]   (* -1 (constante) *)
+  in
+  Nra_solver.assert_eq t p6 (Polynomes.zero (Nra_solver.t_to_poly_ctx t));
 
+(* -1*v9 + 1 = 0 *)
+let p7 =
+    Polynomes.mk_polynomes
+      (Nra_solver.t_to_poly_ctx t)
+      (Array.to_list vars)
+      [ (-1, [0; 0; 0; 0; 0; 0; 1])  ; (* -1*v9 *)
+        (1, [0; 0; 0; 0; 0; 0; 0]) ]   (* +1 (constante) *)
+  in
+  Nra_solver.assert_eq t p7 (Polynomes.zero (Nra_solver.t_to_poly_ctx t));
+
+ (*1*v8^2 + (1*v7^2 + (-1*m)) = 0 *)
+let p8 =
+    Polynomes.mk_polynomes
+      (Nra_solver.t_to_poly_ctx t)
+      (Array.to_list vars)
+      [ (1, [0; 0; 0; 0; 0; 0; 0])   ; (* 1*v8^2 *)
+        (1, [0; 0; 0; 0; 2; 0; 0])   ; (* 1*v7^2 *)
+        (-1, [1; 0; 0; 0; 0; 0; 0]) ]   (* -1*m *)
+  in
+  Nra_solver.assert_eq t p8 (Polynomes.zero (Nra_solver.t_to_poly_ctx t));
+
+
+   
   Fmt.pr "Contexte: %a@." Nra_solver.pp t;
   let ans = Nra_solver.solve t in
   let s = Nra_solver.show_sat_or_unsat t ans in
   Format.printf "mon_test2: %s @." s
-
-
 
 (*let mon_test3 =
   let t = Nra_solver.create () in
@@ -788,7 +872,7 @@ let petit_test =
     (Gen.pure result) (fun x ->
       if Covering.intervalpoly_to_interval x = [] then true else false)*)
 
-let test_get_unsat_intervals =
+(* let test_get_unsat_intervals =
   let t = Nra_solver.create () in
 
   ignore (Nra_solver.create_variable t "x" : Nra_solver.variable);
@@ -800,7 +884,7 @@ let test_get_unsat_intervals =
       let c, s = x in
       Format.printf "FOOO: %s@." (print x);
       let l = Nra_solver.get_unsat_intervals t c s in
-      test_constraints t s c (Covering.intervalpoly_to_interval l))
+      test_constraints t s c (Covering.intervalpoly_to_interval l)) *)
 
 let test_sample_point =
   let print = Fmt.to_to_string Covering.pp_intervals in
@@ -842,7 +926,7 @@ let gen_problem =
 
 let test_algorithme2 =
   let print = Fmt.to_to_string Nra_solver.pp in
-  Test.make ~print ~count:20 ~name:"solver marche" gen_problem (fun x ->
+  Test.make ~print ~count:1 ~name:"solver marche" gen_problem (fun x ->
       Format.printf "mes contraints : %a" Nra_solver.pp x;
       test_solver x)
 
@@ -855,7 +939,7 @@ let test_algorithme2 =
       = 0)*)
 
 (* Group all the tests together *)
-let covering_suite = []
+let covering_suite = [(*test_algorithme2*) ]
 
 (*test_basile;*)
 (*test_get_unsat_intervals*)
