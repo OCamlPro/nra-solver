@@ -361,8 +361,8 @@ let construct_characterization t (s : Polynomes.Assignment.t)
   (*let str3 = Covering.show_intervals_poly i_list in
                     Format.printf "%s le recouvrement  @." str3;*)
   let good_cover = Covering.compute_cover i_list in
-  (*let str2 = Covering.show_intervals_poly good_cover in
-                  Format.printf "%s le bon recouvrement  @." str2;*)
+  let str2 = Covering.show_intervals_poly good_cover in
+                  Format.printf " le bon recouvrement :::%s  @." str2;
   let rec loop (l : Covering.intervalPoly list) (acc : Polynomes.Set.t) =
     match l with
     | [] -> acc
@@ -380,6 +380,7 @@ let construct_characterization t (s : Polynomes.Assignment.t)
                resultant_upper t x.u_bound s x.u_set x.p_set;
              ])
   in
+  
 
   let l = loop good_cover Polynomes.Set.empty in
   (*let str1 = Polynomes.string_of_polynomial_list (Polynomes.to_list l) in
@@ -395,7 +396,7 @@ let construct_characterization t (s : Polynomes.Assignment.t)
                   let str2 = Polynomes.string_of_polynomial_list (Polynomes.to_list l1) in
                   Format.printf " resultat aprés le filtrage :::::::::::::::::::::::::: %s @." str2;*)
   Polynomes.Set.filter
-    (fun x -> if Polynomes.is_constant x then false else true)
+    (fun x -> if (Polynomes.is_constant x && not (Polynomes.is_zero x )  ) then false else true)
     l''
 
 (*#######"#"#"#"##"##"#*************************************************************************)
@@ -469,8 +470,8 @@ let interval_from_charachterization t (v : Polynomes.Var.t)
         Polynomes.Var.compare t.poly_ctx (Polynomes.top_variable x) v = 0)
       p_set
   in
-  (*let str1 = Polynomes.string_of_polynomial_list (Polynomes.to_list pi) in
-                  Format.printf "%s : ma list Pi c'est : @." str1;*)
+  let str1 = Polynomes.string_of_polynomial_list (Polynomes.to_list pi) in
+                  Format.printf " ma list Pi c'est :%s    @." str1;
   let p_orthogonal =
     Polynomes.Set.filter
       (fun x -> if Polynomes.Set.mem x pi then false else true)
@@ -478,10 +479,10 @@ let interval_from_charachterization t (v : Polynomes.Var.t)
   in
   assert (assert_top_variable t pi v);
 
-  (*let str2 =
+  let str2 =
                     Polynomes.string_of_polynomial_list (Polynomes.to_list p_orthogonal)
                   in
-                  Format.printf "%s : ma list P_orthogonal c'est : @." str2;*)
+                  Format.printf " : ma list P_orthogonal c'est : %s   @." str2;
   let roots_list = compute_map_roots t pi s in
   match roots_list with 
    |None -> None 
@@ -539,17 +540,17 @@ let get_unsat_cover t : res =
                 let afrukh = Covering.compute_good_covering amchich in
                let str = Covering.show_intervals afrukh in
                 Format.printf " %s le good covering de la sortie de l'algo 3 : @." str;*)
-    (*Fmt.pr "la sortie de l'algorithme 3 : %a@." Covering.pp_intervals_poly acc;*)
+    Fmt.pr "la sortie de l'algorithme 3 : %a@." Covering.pp_intervals_poly acc;
 
     let si = Covering.sample_outside (Covering.intervalpoly_to_interval acc) in
     (*Fmt.pr "lqa3a: %s --> %a@." (Polynomes.Var.get_name t.poly_ctx variables.(i)) Fmt.(option ~none:(fun ppf () -> Fmt.pf ppf "NONE") Real.pp) si;*)
 
     match si with
-    | None -> Unsat acc
+    | None -> Fmt.pr " s = NONE %s" "" ; Unsat acc
     | Some x -> (
         (*let x_value = Real.to_string x in Format.printf " le sample point : %s   @. " x_value ;*)
         let vi = variables.(i) in
-        let s' = (vi, x) :: s in (*let str = Polynomes.Assignment.of_list s' in
+        let s' = (vi, x) :: s in let str = Polynomes.Assignment.of_list s' in
         let a =
           Polynomes.Assignment.to_libpoly_assignment
             (t_to_poly_ctx t)
@@ -557,7 +558,7 @@ let get_unsat_cover t : res =
         in
         Fmt.pr "le sample point :::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::: %s@."
           (Libpoly.Assignment.to_string a
-          );*)
+          );
 
         if i = n - 1 then Sat s'
         else
@@ -569,19 +570,15 @@ let get_unsat_cover t : res =
               let r =
                 construct_characterization t (Polynomes.Assignment.of_list s') i
               in
-              (*let str4 = Polynomes.string_of_polynomial_list (Polynomes.to_list  r) in 
-                            Format.printf "  sortie de l'algo44444444444444444444444444444444444444444444444444444444444444444444444444 %s @." str4;*)
+              let str4 = Polynomes.string_of_polynomial_list (Polynomes.to_list  r) in 
+                            Format.printf "  sortie de l'algo44444444444444444444444444444444444444444444444444444444444444444444444444 %s @." str4;
 
               let new_i =
                 interval_from_charachterization t vi
                   (Polynomes.Assignment.of_list s)
                   x r
               in
-              (*let str2 =
-                            Covering.show_intervals_poly
-                              ( [ new_i ])
-                          in
-                          Format.printf " la sortie de l'algorothm 555555555555555555555555555555555555555555555555555555555555555555555555: %s @." str2;*)
+              
               (* let () =
                 match new_i.interval with
                 | Covering.Exact _ -> Fmt.pr "je ne peux pas généraliser@."
@@ -590,6 +587,14 @@ let get_unsat_cover t : res =
               match  new_i with
               | None -> Unknown 
               | Some new_i -> 
+                let str2 =
+                  Covering.show_intervals_poly
+                    ( [ new_i ])
+                in
+
+                Format.printf " la sortie de l'algorothm 555555555555555555555555555555555555555555555555555555555555555555555555 %a: %s @."
+                Polynomes.Var.(pp (t_to_poly_ctx t)) vi  str2
+                ;
 
 
 
