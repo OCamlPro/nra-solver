@@ -19,3 +19,4 @@ val max : t -> t -> t
 val min : t -> t -> t
 val pp : Format.formatter -> t -> unit
 val pp_array_of_real : Format.formatter -> t array -> unit
+val real_array_ro_string : t array -> string 

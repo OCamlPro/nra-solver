@@ -1,0 +1,443 @@
+(error "info commands not supported")
+la sortie de l'algorithme 3 : []
+le sample point :::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::: [x -> 0]
+la sortie de l'algorithme 3 : []
+le sample point :::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::: [x -> 0, y -> 0]
+la sortie de l'algorithme 3 : [{ interval: (1, +oo);
+  u_bound: +oo;
+  l_bound: 1;
+  u_set: ;
+  l_set: 1*z^2 - 1;
+  p_set: 1*z^2 - 1;
+  p_orthogonal_set:  };
+                               { interval: (-1, 1);
+  u_bound: 1;
+  l_bound: -1;
+  u_set: 1*z^2 - 1;
+  l_set: 1*z^2 - 1;
+  p_set: 1*z^2 - 1;
+  p_orthogonal_set:  };
+                               { interval: (-oo, -1);
+  u_bound: -1;
+  l_bound: -oo;
+  u_set: 1*z^2 - 1;
+  l_set: ;
+  p_set: 1*z^2 - 1;
+  p_orthogonal_set:  };
+                               { interval: (0, +oo);
+  u_bound: +oo;
+  l_bound: 0;
+  u_set: ;
+  l_set: -1*z^2 + (1*y^2 + (1*x^2));
+  p_set: -1*z^2 + (1*y^2 + (1*x^2));
+  p_orthogonal_set:  };
+                               { interval: (-oo, 0);
+  u_bound: 0;
+  l_bound: -oo;
+  u_set: -1*z^2 + (1*y^2 + (1*x^2));
+  l_set: ;
+  p_set: -1*z^2 + (1*y^2 + (1*x^2));
+  p_orthogonal_set:  }]
+ s = NONE  le bon recouvrement :::[{ interval: (-oo, 0);
+  u_bound: 0;
+  l_bound: -oo;
+  u_set: -1*z^2 + (1*y^2 + (1*x^2));
+  l_set: ;
+  p_set: -1*z^2 + (1*y^2 + (1*x^2));
+  p_orthogonal_set:  };
+ { interval: (-1, 1);
+  u_bound: 1;
+  l_bound: -1;
+  u_set: 1*z^2 - 1;
+  l_set: 1*z^2 - 1;
+  p_set: 1*z^2 - 1;
+  p_orthogonal_set:  };
+ { interval: (0, +oo);
+  u_bound: +oo;
+  l_bound: 0;
+  u_set: ;
+  l_set: -1*z^2 + (1*y^2 + (1*x^2));
+  p_set: -1*z^2 + (1*y^2 + (1*x^2));
+  p_orthogonal_set:  }]  
+ le discriminant DDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDD :[4*y^2 + (4*x^2)]    
+ le discriminant DDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDD :[-4]    
+ le discriminant DDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDD :[4*y^2 + (4*x^2)]    
+resultat de l'algo 4 premiere boucle  [-4; -1; 0; 1; 4*y^2 + (4*x^2)]  
+ resultat avant le filtrage :::::::::::::::::::::::::::::::::::::::::::::::::::::: : [-4; -1; 0; 1; 4*y^2 + (4*x^2); 1*y^4 + (2*x^2 - 2)*y^2 + (1*x^4 - 2*x^2 + 1)] 
+  sortie de l'algo44444444444444444444444444444444444444444444444444444444444444444444444444 [0; 4*y^2 + (4*x^2); 1*y^4 + (2*x^2 - 2)*y^2 + (1*x^4 - 2*x^2 + 1)] 
+ ma list Pi c'est :[4*y^2 + (4*x^2); 1*y^4 + (2*x^2 - 2)*y^2 + (1*x^4 - 2*x^2 + 1)]    
+ : ma list P_orthogonal c'est : [0]   
+mes racines : -1
+1
+0 
+ la sortie de l'algorothm 555555555555555555555555555555555555555555555555555555555555555555555555 y: [{ interval: {0};
+  u_bound: 0;
+  l_bound: 0;
+  u_set: 4*y^2 + (4*x^2);
+  l_set: 4*y^2 + (4*x^2);
+  p_set: 4*y^2 + (4*x^2)
+ 1*y^4 + (2*x^2 - 2)*y^2 + (1*x^4 - 2*x^2 + 1);
+  p_orthogonal_set: 0 }] 
+la sortie de l'algorithme 3 : [{ interval: {0};
+  u_bound: 0;
+  l_bound: 0;
+  u_set: 4*y^2 + (4*x^2);
+  l_set: 4*y^2 + (4*x^2);
+  p_set: 4*y^2 + (4*x^2)
+                               1*y^4 + (2*x^2 - 2)*y^2 + (1*x^4 - 2*x^2 + 1);
+  p_orthogonal_set: 0 }]
+le sample point :::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::: [x -> 0, y -> -1]
+la sortie de l'algorithme 3 : [{ interval: (1, +oo);
+  u_bound: +oo;
+  l_bound: 1;
+  u_set: ;
+  l_set: 1*z^2 - 1;
+  p_set: 1*z^2 - 1;
+  p_orthogonal_set:  };
+                               { interval: (-1, 1);
+  u_bound: 1;
+  l_bound: -1;
+  u_set: 1*z^2 - 1;
+  l_set: 1*z^2 - 1;
+  p_set: 1*z^2 - 1;
+  p_orthogonal_set:  };
+                               { interval: (-oo, -1);
+  u_bound: -1;
+  l_bound: -oo;
+  u_set: 1*z^2 - 1;
+  l_set: ;
+  p_set: 1*z^2 - 1;
+  p_orthogonal_set:  };
+                               { interval: (1, +oo);
+  u_bound: +oo;
+  l_bound: 1;
+  u_set: ;
+  l_set: -1*z^2 + (1*y^2 + (1*x^2));
+  p_set: -1*z^2 + (1*y^2 + (1*x^2));
+  p_orthogonal_set:  };
+                               { interval: (-1, 1);
+  u_bound: 1;
+  l_bound: -1;
+  u_set: -1*z^2 + (1*y^2 + (1*x^2));
+  l_set: -1*z^2 + (1*y^2 + (1*x^2));
+  p_set: -1*z^2 + (1*y^2 + (1*x^2));
+  p_orthogonal_set:  };
+                               { interval: (-oo, -1);
+  u_bound: -1;
+  l_bound: -oo;
+  u_set: -1*z^2 + (1*y^2 + (1*x^2));
+  l_set: ;
+  p_set: -1*z^2 + (1*y^2 + (1*x^2));
+  p_orthogonal_set:  }]
+le sample point :::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::: [x -> 0, y -> -1, z -> -1]
+la sortie de l'algorithme 3 : [{ interval: (1/2, +oo);
+  u_bound: +oo;
+  l_bound: 1/2;
+  u_set: ;
+  l_set: 2*w - 1;
+  p_set: 2*w - 1;
+  p_orthogonal_set:  };
+                               { interval: (-oo, 1/2);
+  u_bound: 1/2;
+  l_bound: -oo;
+  u_set: 2*w - 1;
+  l_set: ;
+  p_set: 2*w - 1;
+  p_orthogonal_set:  };
+                               { interval: (0, +oo);
+  u_bound: +oo;
+  l_bound: 0;
+  u_set: ;
+  l_set: -1*w + (1*x);
+  p_set: -1*w + (1*x);
+  p_orthogonal_set:  };
+                               { interval: (-oo, 0);
+  u_bound: 0;
+  l_bound: -oo;
+  u_set: -1*w + (1*x);
+  l_set: ;
+  p_set: -1*w + (1*x);
+  p_orthogonal_set:  }]
+ s = NONE  le bon recouvrement :::[{ interval: (-oo, 1/2);
+  u_bound: 1/2;
+  l_bound: -oo;
+  u_set: 2*w - 1;
+  l_set: ;
+  p_set: 2*w - 1;
+  p_orthogonal_set:  };
+ { interval: (0, +oo);
+  u_bound: +oo;
+  l_bound: 0;
+  u_set: ;
+  l_set: -1*w + (1*x);
+  p_set: -1*w + (1*x);
+  p_orthogonal_set:  }]  
+ le discriminant DDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDD :[1]    
+ le discriminant DDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDD :[1]    
+resultat de l'algo 4 premiere boucle  [-1; 0; 1; 2]  
+ resultat avant le filtrage :::::::::::::::::::::::::::::::::::::::::::::::::::::: : [-1; 0; 1; 2; 2*x - 1] 
+  sortie de l'algo44444444444444444444444444444444444444444444444444444444444444444444444444 [0; 2*x - 1] 
+ ma list Pi c'est :[]    
+ : ma list P_orthogonal c'est : [0; 2*x - 1]   
+mes racines : [] 
+ la sortie de l'algorothm 555555555555555555555555555555555555555555555555555555555555555555555555 z: [{ interval: (-oo, +oo);
+  u_bound: +oo;
+  l_bound: -oo;
+  u_set: ;
+  l_set: ;
+  p_set: ;
+  p_orthogonal_set: 0
+ 2*x - 1 }] 
+la sortie de l'algorithme 3 : [{ interval: (-oo, +oo);
+  u_bound: +oo;
+  l_bound: -oo;
+  u_set: ;
+  l_set: ;
+  p_set: ;
+  p_orthogonal_set: 0
+                               2*x - 1 };
+                               { interval: (1, +oo);
+  u_bound: +oo;
+  l_bound: 1;
+  u_set: ;
+  l_set: 1*z^2 - 1;
+  p_set: 1*z^2 - 1;
+  p_orthogonal_set:  };
+                               { interval: (-1, 1);
+  u_bound: 1;
+  l_bound: -1;
+  u_set: 1*z^2 - 1;
+  l_set: 1*z^2 - 1;
+  p_set: 1*z^2 - 1;
+  p_orthogonal_set:  };
+                               { interval: (-oo, -1);
+  u_bound: -1;
+  l_bound: -oo;
+  u_set: 1*z^2 - 1;
+  l_set: ;
+  p_set: 1*z^2 - 1;
+  p_orthogonal_set:  };
+                               { interval: (1, +oo);
+  u_bound: +oo;
+  l_bound: 1;
+  u_set: ;
+  l_set: -1*z^2 + (1*y^2 + (1*x^2));
+  p_set: -1*z^2 + (1*y^2 + (1*x^2));
+  p_orthogonal_set:  };
+                               { interval: (-1, 1);
+  u_bound: 1;
+  l_bound: -1;
+  u_set: -1*z^2 + (1*y^2 + (1*x^2));
+  l_set: -1*z^2 + (1*y^2 + (1*x^2));
+  p_set: -1*z^2 + (1*y^2 + (1*x^2));
+  p_orthogonal_set:  };
+                               { interval: (-oo, -1);
+  u_bound: -1;
+  l_bound: -oo;
+  u_set: -1*z^2 + (1*y^2 + (1*x^2));
+  l_set: ;
+  p_set: -1*z^2 + (1*y^2 + (1*x^2));
+  p_orthogonal_set:  }]
+ s = NONE  le bon recouvrement :::[{ interval: (-oo, +oo);
+  u_bound: +oo;
+  l_bound: -oo;
+  u_set: ;
+  l_set: ;
+  p_set: ;
+  p_orthogonal_set: 0
+ 2*x - 1 }]  
+ le discriminant DDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDD :[]    
+resultat de l'algo 4 premiere boucle  [0; 2*x - 1]  
+ resultat avant le filtrage :::::::::::::::::::::::::::::::::::::::::::::::::::::: : [0; 2*x - 1] 
+  sortie de l'algo44444444444444444444444444444444444444444444444444444444444444444444444444 [0; 2*x - 1] 
+ ma list Pi c'est :[]    
+ : ma list P_orthogonal c'est : [0; 2*x - 1]   
+mes racines : [] 
+ la sortie de l'algorothm 555555555555555555555555555555555555555555555555555555555555555555555555 y: [{ interval: (-oo, +oo);
+  u_bound: +oo;
+  l_bound: -oo;
+  u_set: ;
+  l_set: ;
+  p_set: ;
+  p_orthogonal_set: 0
+ 2*x - 1 }] 
+la sortie de l'algorithme 3 : [{ interval: (-oo, +oo);
+  u_bound: +oo;
+  l_bound: -oo;
+  u_set: ;
+  l_set: ;
+  p_set: ;
+  p_orthogonal_set: 0
+                               2*x - 1 };
+                               { interval: {0};
+  u_bound: 0;
+  l_bound: 0;
+  u_set: 4*y^2 + (4*x^2);
+  l_set: 4*y^2 + (4*x^2);
+  p_set: 4*y^2 + (4*x^2)
+                               1*y^4 + (2*x^2 - 2)*y^2 + (1*x^4 - 2*x^2 + 1);
+  p_orthogonal_set: 0 }]
+ s = NONE  le bon recouvrement :::[{ interval: (-oo, +oo);
+  u_bound: +oo;
+  l_bound: -oo;
+  u_set: ;
+  l_set: ;
+  p_set: ;
+  p_orthogonal_set: 0
+ 2*x - 1 }]  
+ le discriminant DDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDD :[]    
+resultat de l'algo 4 premiere boucle  [0; 2*x - 1]  
+ resultat avant le filtrage :::::::::::::::::::::::::::::::::::::::::::::::::::::: : [0; 2*x - 1] 
+  sortie de l'algo44444444444444444444444444444444444444444444444444444444444444444444444444 [0; 2*x - 1] 
+ ma list Pi c'est :[2*x - 1]    
+ : ma list P_orthogonal c'est : [0]   
+mes racines : 1/2 
+ la sortie de l'algorothm 555555555555555555555555555555555555555555555555555555555555555555555555 x: [{ interval: (-oo, 1/2);
+  u_bound: 1/2;
+  l_bound: -oo;
+  u_set: 2*x - 1;
+  l_set: ;
+  p_set: 2*x - 1;
+  p_orthogonal_set: 0 }] 
+la sortie de l'algorithme 3 : [{ interval: (-oo, 1/2);
+  u_bound: 1/2;
+  l_bound: -oo;
+  u_set: 2*x - 1;
+  l_set: ;
+  p_set: 2*x - 1;
+  p_orthogonal_set: 0 }]
+le sample point :::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::: [x -> 3/2]
+la sortie de l'algorithme 3 : []
+le sample point :::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::: [x -> 3/2, y -> 0]
+la sortie de l'algorithme 3 : [{ interval: (1, +oo);
+  u_bound: +oo;
+  l_bound: 1;
+  u_set: ;
+  l_set: 1*z^2 - 1;
+  p_set: 1*z^2 - 1;
+  p_orthogonal_set:  };
+                               { interval: (-1, 1);
+  u_bound: 1;
+  l_bound: -1;
+  u_set: 1*z^2 - 1;
+  l_set: 1*z^2 - 1;
+  p_set: 1*z^2 - 1;
+  p_orthogonal_set:  };
+                               { interval: (-oo, -1);
+  u_bound: -1;
+  l_bound: -oo;
+  u_set: 1*z^2 - 1;
+  l_set: ;
+  p_set: 1*z^2 - 1;
+  p_orthogonal_set:  };
+                               { interval: (3/2, +oo);
+  u_bound: +oo;
+  l_bound: 3/2;
+  u_set: ;
+  l_set: -1*z^2 + (1*y^2 + (1*x^2));
+  p_set: -1*z^2 + (1*y^2 + (1*x^2));
+  p_orthogonal_set:  };
+                               { interval: (-3/2, 3/2);
+  u_bound: 3/2;
+  l_bound: -3/2;
+  u_set: -1*z^2 + (1*y^2 + (1*x^2));
+  l_set: -1*z^2 + (1*y^2 + (1*x^2));
+  p_set: -1*z^2 + (1*y^2 + (1*x^2));
+  p_orthogonal_set:  };
+                               { interval: (-oo, -3/2);
+  u_bound: -3/2;
+  l_bound: -oo;
+  u_set: -1*z^2 + (1*y^2 + (1*x^2));
+  l_set: ;
+  p_set: -1*z^2 + (1*y^2 + (1*x^2));
+  p_orthogonal_set:  }]
+ s = NONE  le bon recouvrement :::[{ interval: (-oo, -1);
+  u_bound: -1;
+  l_bound: -oo;
+  u_set: 1*z^2 - 1;
+  l_set: ;
+  p_set: 1*z^2 - 1;
+  p_orthogonal_set:  };
+ { interval: (-3/2, 3/2);
+  u_bound: 3/2;
+  l_bound: -3/2;
+  u_set: -1*z^2 + (1*y^2 + (1*x^2));
+  l_set: -1*z^2 + (1*y^2 + (1*x^2));
+  p_set: -1*z^2 + (1*y^2 + (1*x^2));
+  p_orthogonal_set:  };
+ { interval: (1, +oo);
+  u_bound: +oo;
+  l_bound: 1;
+  u_set: ;
+  l_set: 1*z^2 - 1;
+  p_set: 1*z^2 - 1;
+  p_orthogonal_set:  }]  
+ le discriminant DDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDD :[-4]    
+ le discriminant DDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDD :[4*y^2 + (4*x^2)]    
+ le discriminant DDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDD :[-4]    
+resultat de l'algo 4 premiere boucle  [-4; -1; 0; 1; 4*y^2 + (4*x^2)]  
+ resultat avant le filtrage :::::::::::::::::::::::::::::::::::::::::::::::::::::: : [-4; -1; 0; 1; 4*y^2 + (4*x^2); 1*y^4 + (2*x^2 - 2)*y^2 + (1*x^4 - 2*x^2 + 1)] 
+  sortie de l'algo44444444444444444444444444444444444444444444444444444444444444444444444444 [0; 4*y^2 + (4*x^2); 1*y^4 + (2*x^2 - 2)*y^2 + (1*x^4 - 2*x^2 + 1)] 
+ ma list Pi c'est :[4*y^2 + (4*x^2); 1*y^4 + (2*x^2 - 2)*y^2 + (1*x^4 - 2*x^2 + 1)]    
+ : ma list P_orthogonal c'est : [0]   
+mes racines : [] 
+ la sortie de l'algorothm 555555555555555555555555555555555555555555555555555555555555555555555555 y: [{ interval: (-oo, +oo);
+  u_bound: +oo;
+  l_bound: -oo;
+  u_set: ;
+  l_set: ;
+  p_set: 4*y^2 + (4*x^2)
+ 1*y^4 + (2*x^2 - 2)*y^2 + (1*x^4 - 2*x^2 + 1);
+  p_orthogonal_set: 0 }] 
+la sortie de l'algorithme 3 : [{ interval: (-oo, +oo);
+  u_bound: +oo;
+  l_bound: -oo;
+  u_set: ;
+  l_set: ;
+  p_set: 4*y^2 + (4*x^2)
+                               1*y^4 + (2*x^2 - 2)*y^2 + (1*x^4 - 2*x^2 + 1);
+  p_orthogonal_set: 0 }]
+ s = NONE  le bon recouvrement :::[{ interval: (-oo, +oo);
+  u_bound: +oo;
+  l_bound: -oo;
+  u_set: ;
+  l_set: ;
+  p_set: 4*y^2 + (4*x^2)
+ 1*y^4 + (2*x^2 - 2)*y^2 + (1*x^4 - 2*x^2 + 1);
+  p_orthogonal_set: 0 }]  
+ le discriminant DDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDD :[256*x^2; 0]    
+resultat de l'algo 4 premiere boucle  [0; 1; 4; 256*x^2]  
+ resultat avant le filtrage :::::::::::::::::::::::::::::::::::::::::::::::::::::: : [0; 1; 4; 256*x^2] 
+  sortie de l'algo44444444444444444444444444444444444444444444444444444444444444444444444444 [0; 256*x^2] 
+ ma list Pi c'est :[256*x^2]    
+ : ma list P_orthogonal c'est : [0]   
+mes racines : 0 
+ la sortie de l'algorothm 555555555555555555555555555555555555555555555555555555555555555555555555 x: [{ interval: (0, +oo);
+  u_bound: +oo;
+  l_bound: 0;
+  u_set: ;
+  l_set: 256*x^2;
+  p_set: 256*x^2;
+  p_orthogonal_set: 0 }] 
+la sortie de l'algorithme 3 : [{ interval: (0, +oo);
+  u_bound: +oo;
+  l_bound: 0;
+  u_set: ;
+  l_set: 256*x^2;
+  p_set: 256*x^2;
+  p_orthogonal_set: 0 };
+                               { interval: (-oo, 1/2);
+  u_bound: 1/2;
+  l_bound: -oo;
+  u_set: 2*x - 1;
+  l_set: ;
+  p_set: 2*x - 1;
+  p_orthogonal_set: 0 }]
+ s = NONE Unsat Unsat :Constraints: (2*w - 1 = 0)
+(-1*w + (1*x) = 0)
+(1*z^2 - 1 = 0)
+(-1*z^2 + (1*y^2 + (1*x^2)) = 0)
+Variables: x, y, z, w
+is_unsat: false
+ 
+(error "info commands not supported")

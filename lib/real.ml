@@ -18,6 +18,8 @@ let pp_array_of_real ppf (real_array : t array) =
       real_array;
     Format.fprintf ppf "@]" (* Close the vertical box *))
 
+let real_array_ro_string = Fmt.to_to_string @@ pp_array_of_real
+
 module Var = Libpoly.Variable
 module Integer = Libpoly.Integer
 module Rational = Libpoly.Rational
