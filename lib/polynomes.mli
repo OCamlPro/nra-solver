@@ -42,6 +42,8 @@ val roots_isolate : ctx -> t -> Assignment.t -> Real.t array
 val reductum : ctx -> t -> t
 val derivative : ctx -> t -> t
 val primitive : ctx -> t -> t
+val factor_square_free : t -> (t * int) array 
+val mul_factor_square_free : ctx ->  t -> t 
 val disc : ctx -> t -> t
 val equal : t -> t -> bool
 val is_constant : t -> bool

@@ -413,9 +413,10 @@ let construct_characterization t (s : Polynomes.Assignment.t)
   (*let l1 = Polynomes.Set.map (fun p -> Polynomes.primitive p) l'' in
                   let str2 = Polynomes.string_of_polynomial_list (Polynomes.to_list l1) in
                   Format.printf " resultat aprés le filtrage :::::::::::::::::::::::::: %s @." str2;*)
-  Polynomes.Set.filter
+  let filtered_Set = Polynomes.Set.filter
     (fun x -> if (Polynomes.is_constant x && not (Polynomes.is_zero x )  ) then false else true)
-    l''
+    l'' in 
+  Polynomes.Set.map (fun q -> Polynomes.mul_factor_square_free t.poly_ctx q ) filtered_Set 
 
 (*#######"#"#"#"##"##"#*************************************************************************)
 (*#######"#"#"#"##"##"#*************************************************************************)

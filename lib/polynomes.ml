@@ -102,6 +102,24 @@ let reductum = app1 P.reductum
 let derivative = app1 P.derivative
 let primitive = app1 P.pp
 
+
+let rec mult_list_polynomes ctx (n : int) (l : t list) : t =
+  match l with
+  | [] -> of_int ctx (Z.of_int n)
+  | p :: l -> mul ctx p (mult_list_polynomes ctx n l)
+
+
+
+
+let factor_square_free =   P.factor_square_free
+
+let mul_factor_square_free ctx p = 
+ let arr_p_int = factor_square_free  p in 
+ let arr_p = Array.map (fun x -> let (q,_) = x in q ) arr_p_int in mult_list_polynomes ctx 1 (Array.to_list arr_p)
+
+
+
+
 (* FIXME *)
 (*j'ai enlevé le ctx*)
 let degree = P.degree
@@ -131,10 +149,7 @@ let mk_assignment (variables : Var.t list) (l : int list) : Assignment.t =
   in
   Assignment.of_list l
 
-let rec mult_list_polynomes ctx (n : int) (l : t list) : t =
-  match l with
-  | [] -> of_int ctx (Z.of_int n)
-  | p :: l -> mul ctx p (mult_list_polynomes ctx n l)
+ 
 
 let mk_monomes ctx (variables : Var.t list) ((coeff, degres) : int * int list) =
   let l =
