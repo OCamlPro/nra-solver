@@ -1,6 +1,8 @@
 (library
- (name nra_solver))
+ (name nra_solver)
+ (libraries flint libpoly_bindings fmt zarith qcheck))
 
 (env
-  (dev
-    (flags (:standard -warn-error -A))))
+ (dev
+  (flags
+   (:standard -warn-error -A))))

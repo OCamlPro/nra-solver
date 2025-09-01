@@ -1,4 +1,5 @@
 pin-depends: [
   # Compatibility with Flint >= 3.2.0
-  [ "flint.0.4.0" "git+https://github.com/Halbaroth/ocaml-flint.git#nra-solver" ]
+  [ "flint.0.4.0" "git+https://github.com/manelsadi/ocaml-flint.git#my-ocaml-flint" ]
+  ["libpoly_bindings.dev" "git+https://github.com/Manelsadi/libpoly_ocaml_bindings.git#main" ]
 ]

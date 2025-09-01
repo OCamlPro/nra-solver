@@ -2,4 +2,15 @@
  (package nra_solver)
  (public_name nra_solver)
  (name frontend)
- (libraries nra_solver cmdliner fmt dolmen dolmen_type dolmen_loop))
+ (modules frontend)
+ (libraries nra_solver cmdliner fmt dolmen dolmen_type dolmen_loop flint))
+
+(executable
+ (name test)
+ (modules test)
+ (libraries nra_solver flint libpoly_bindings fmt zarith))
+
+(env
+ (dev
+  (flags
+   (:standard -warn-error -A))))

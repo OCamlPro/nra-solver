@@ -1,5 +1,6 @@
 (lang dune 3.17)
 (name nra_solver)
+(using ctypes 0.3)
 
 (authors "Alt-Ergo developers <alt-ergo@ocamlpro.com>")
 (maintainers "Alt-Ergo developers <alt-ergo@ocamlpro.com>")
@@ -25,6 +26,8 @@
     dolmen_loop
     zarith
     (flint (>= 0.4))
+    libpoly_bindings
+    topkg
     cmdliner
     (qcheck :with-test)
     (odoc :with-doc)

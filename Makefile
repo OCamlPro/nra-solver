@@ -31,6 +31,9 @@ build:
 test:
 	dune build $(FLAGS) @runtest
 
+fmt:
+	dune fmt
+
 clean:
 	dune clean
 

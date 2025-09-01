@@ -1,0 +1,14 @@
+{
+	"version": "2.0.0",
+	"key": "ctrl+shift+x",
+	"tasks": [
+		{
+			"type": "dune",
+			"problemMatcher": [
+				"$ocamlc"
+			],
+			"group": "build",
+			"label": "compiler le projet"
+		}
+	]
+}
