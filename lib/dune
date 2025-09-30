@@ -1,6 +1,6 @@
 (library
  (name nra_solver)
- (libraries flint libpoly_bindings fmt zarith qcheck))
+ (libraries libpoly_bindings fmt zarith qcheck))
 
 (env
  (dev

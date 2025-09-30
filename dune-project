@@ -25,13 +25,12 @@
     dolmen
     dolmen_loop
     zarith
-    (flint (>= 0.4))
     libpoly_bindings
     topkg
     cmdliner
     (qcheck :with-test)
     (odoc :with-doc)
-    (utop :dev) 
+    (utop :dev)
     (down :dev)
     (ocaml-lsp-server :dev)
     (ocamlformat (and (= 0.27.0) :dev))))

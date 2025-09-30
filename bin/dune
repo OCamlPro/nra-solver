@@ -3,12 +3,12 @@
  (public_name nra_solver)
  (name frontend)
  (modules frontend)
- (libraries nra_solver cmdliner fmt dolmen dolmen_type dolmen_loop flint))
+ (libraries nra_solver cmdliner fmt dolmen dolmen_type dolmen_loop))
 
 (executable
  (name test)
  (modules test)
- (libraries nra_solver flint libpoly_bindings fmt zarith))
+ (libraries nra_solver libpoly_bindings fmt zarith))
 
 (env
  (dev
