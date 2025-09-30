@@ -8,7 +8,6 @@ let compare_bound (b : bound) (b' : bound) : int =
   | _, Pinf | Ninf, _ -> -1
 
 type interval = Open of bound * bound | Exact of Real.t
-type covering = interval list
 
 type intervalPoly = {
   interval : interval;
@@ -97,11 +96,11 @@ let sample_interval (b1 : bound) (b2 : bound) : Real.t =
 
 let compare_inter (i1 : interval) (i2 : interval) : int =
   match (i1, i2) with
-  | Open (a, b), Open (c, d) -> compare_bound a c
+  | Open (a, _), Open (c, _) -> compare_bound a c
   | Open (Ninf, _), _ -> -1
   | _, Open (Ninf, _) -> 1
-  | Open (Finite a, b), Exact c -> if Real.compare a c < 0 then -1 else 1
-  | Exact c, Open (Finite a, b) -> if Real.compare a c < 0 then 1 else -1
+  | Open (Finite a, _), Exact c -> if Real.compare a c < 0 then -1 else 1
+  | Exact c, Open (Finite a, _) -> if Real.compare a c < 0 then 1 else -1
   | Open (Pinf, _), _ -> 1
   | _, Open (Pinf, _) -> -1
   | Exact a, Exact b -> Real.compare a b
@@ -119,34 +118,14 @@ let compare_inter1 (i1 : interval) (i2 : interval) : int =
         -1
       else compare_bound b (Finite a)
 
-let sort_intervals (intervals : interval list) : interval list =
-  List.sort compare_inter intervals
-
 let sort_intervals1 (intervals : interval list) : interval list =
   List.sort compare_inter1 intervals
-
-let one = Real.of_int 1
-let mone = Real.of_int (-1)
-let zero = Real.of_int 0
-let five = Real.of_int 5
-let eight = Real.of_int 8
-
-let l =
-  sort_intervals1
-    [
-      Open (Ninf, Finite one);
-      Open (Finite mone, Finite zero);
-      Exact eight;
-      Open (Finite one, Pinf);
-      Exact one;
-      Exact five;
-    ]
 
 let is_covering l =
   let rec loop_open c l =
     (* En entrant dans cette fonction, on suppose qu'on a déjà un
          recouvrement de (-oo, c).
-  
+
          On cherche l'intervalle fermé [c, c] ou un intervalle ouvert
          de la forme (a, b) avec a < c && c < b. *)
     match l with
@@ -170,7 +149,7 @@ let is_covering l =
   and loop_close c l =
     (* En entrant dans cette fonction, on suppose qu'on a déjà un recouvrement
          de (-oo, c].
-  
+
          On cherche un intervalle de la forme (a, b) avec a <= c && c < b. *)
     match l with
     | Open (a, Pinf) :: _ when compare_bound a (Finite c) <= 0 ->
@@ -243,35 +222,28 @@ let sample_outside (l : interval list) : Real.t option =
   | [] -> Some (Real.of_int 0)
   | _ -> assert false
 
-let b =
-  sample_outside
-    [
-      Open (Ninf, Finite (Real.of_int 5));
-      Open (Finite (Real.of_int 6), Finite (Real.of_int 9));
-    ]
-
 (*let compute_good_covering (u : interval list) : interval list =
-          let sorted_intervals = sort_intervals1 u in  
+          let sorted_intervals = sort_intervals1 u in
           let n = List.length sorted_intervals in
-          let to_keep = Array.make n true in  
-        
+          let to_keep = Array.make n true in
+
           for i = 0 to n - 1 do
-            if to_keep.(i) then  
+            if to_keep.(i) then
               let current_interval = List.nth sorted_intervals i in
               for j = i + 1 to n - 1 do
                 if to_keep.(j) then
                   let next_interval = List.nth sorted_intervals j in
                   match current_interval, next_interval with
                   | Open (_, b1), Open (_, b2) ->
-                    if compare_bound b2 b1 <= 0 then to_keep.(j) <- false 
+                    if compare_bound b2 b1 <= 0 then to_keep.(j) <- false
                   | Open (_, b1), Exact a2 ->
-                    if compare_bound (Finite a2) b1 <= 0 then to_keep.(j) <- false  
+                    if compare_bound (Finite a2) b1 <= 0 then to_keep.(j) <- false
                   | Exact a1, Exact a2 ->
                     if  a2 = a1 then to_keep.(j) <- false
                   |Exact _ , Open(_,_) -> ()
               done
           done;
-        
+
           (* Collect the intervals that were marked to be kept *)
           let result = ref [] in
           for i = 0 to n - 1 do
@@ -342,32 +314,7 @@ let pp_debug_interval ppf i =
 
 let pp_debug_intervals = Fmt.(brackets @@ list ~sep:semi pp_debug_interval)
 let show_intervals = Fmt.to_to_string @@ pp_intervals
-let show_interval = Fmt.to_to_string @@ pp_interval
 let string_of_bound = Fmt.to_to_string @@ pp_bound
-
-let show_intervals_poly (l : intervalPoly list) : string =
-  let string_of_single_interval_poly (ip : intervalPoly) : string =
-    Printf.sprintf
-      "{ interval: %s;\n\
-      \  u_bound: %s;\n\
-      \  l_bound: %s;\n\
-      \  u_set: %s;\n\
-      \  l_set: %s;\n\
-      \  p_set: %s;\n\
-      \  p_orthogonal_set: %s }"
-      (show_interval ip.interval)
-      (string_of_bound ip.u_bound)
-      (string_of_bound ip.l_bound)
-      (Polynomes.string_of_polynomial_list (Polynomes.to_list ip.u_set))
-      (Polynomes.string_of_polynomial_list (Polynomes.to_list ip.l_set))
-      (Polynomes.string_of_polynomial_list (Polynomes.to_list ip.p_set))
-      (Polynomes.string_of_polynomial_list
-         (Polynomes.to_list ip.p_orthogonal_set))
-  in
-
-  "[\n"
-  ^ String.concat ";\n" (List.map string_of_single_interval_poly l)
-  ^ "\n]"
 
 let pp_interval_poly ppf
     { interval; u_bound; l_bound; u_set; l_set; p_set; p_orthogonal_set } =
@@ -459,32 +406,10 @@ let compute_cover (u : intervalPoly list) : intervalPoly list =
     (fun { interval = i1; _ } { interval = i2; _ } -> compare_inter1 i1 i2)
     l
 
-let b =
-  compute_good_covering
-    [
-      Open (Ninf, Finite zero);
-      Open (Ninf, Finite one);
-      Exact eight;
-      Open (Finite one, Pinf);
-      Exact one;
-      Exact five;
-    ]
-
-let b = compute_good_covering [ Open (Ninf, Finite zero); Open (Ninf, Pinf) ]
-
-let c =
-  is_good_covering
-    [
-      Open (Ninf, Finite zero);
-      Open (Ninf, Finite one);
-      Exact one;
-      Open (Finite one, Pinf);
-    ]
-
 let length (i : interval) =
   match i with
   | Open (Finite a, Finite b) -> Real.sub b a
-  | Exact a -> Real.Syntax.(~$0)
+  | Exact _ -> Real.Syntax.(~$0)
   | _ -> invalid_arg "infinity length"
 
 let max_bound (a : bound) (b : bound) : bound =
@@ -507,45 +432,6 @@ let inter (i1 : interval) (i2 : interval) : interval option =
     | Open (a, b), Open (c, d) -> Some (Open (max_bound a c, min_bound b d))
     | Exact a, Open (_, _) | Open (_, _), Exact a -> Some (Exact a)
     | Exact a, Exact _ -> Some (Exact a)
-
-type degres =
-  int list (* Une liste d'entiers représentant les degrés de chaque variable *)
-
-type monome_multi_variable = Real.t * degres
-type polynome_multi_variable = monome_multi_variable list
-
-let (example : polynome_multi_variable) =
-  [
-    (Real.Syntax.(~$2), [ 2; 0; 0 ]);
-    (* 2x^2  + y + 7y + 6*)
-    (Real.Syntax.(~$1), [ 0; 1; 0 ]);
-    (Real.Syntax.(~$7), [ 0; 0; 7 ]);
-    (Real.Syntax.(~$6), [ 0; 0; 0 ]);
-  ]
-
-type comparaison =
-  | SuperieurOuEgal
-  | Suerieur
-  | InferieurOuEgal
-  | Inferieur
-  | Egal
-
-type constraints = polynome_multi_variable * comparaison
-
-let (exemple : constraints) =
-  ( [
-      (Real.Syntax.(~$2), [ 2; 0; 0 ]);
-      (Real.Syntax.(~$1), [ 0; 1; 0 ]);
-      (Real.Syntax.(~$7), [ 0; 0; 7 ]);
-      (Real.Syntax.(~$6), [ 0; 0; 0 ]);
-    ],
-    Inferieur )
-(* 2x^2  + y + 7y + 6 < 0*)
-
-type set_const = constraints list
-
-let rec mult (l : Real.t list) : Real.t =
-  match l with [] -> Real.of_int 1 | x :: l -> Real.mul (mult l) x
 
 let pointsToIntervals (arr : Real.t array) : interval list =
   let n = Array.length arr in
@@ -572,6 +458,3 @@ let pointsToIntervals2 l =
       Open (Ninf, Finite a) :: Exact a :: Open (Finite a, Finite b) :: l
   | [] -> []
   | _ -> assert false
-
-let b =
-  pointsToIntervals2 [ Real.Syntax.(~$1); Real.Syntax.(~$4); Real.Syntax.(~$7) ]

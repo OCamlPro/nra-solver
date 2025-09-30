@@ -31,7 +31,7 @@ val assert_geq : t -> term -> term -> unit
 type res =
   | Sat of (Polynomes.Var.t * Real.t) list
   | Unsat of Covering.intervalPoly list
-  | Unknown 
+  | Unknown
 
 val evaluate_contraint :
   t -> contraint -> Polynomes.Assignment.t -> Real.t -> bool
@@ -49,20 +49,10 @@ val interval_from_charachterization :
   variable ->
   Polynomes.Assignment.t ->
   Real.t ->
-  Polynomes.Set.t -> 
-  Covering.intervalPoly option 
+  Polynomes.Set.t ->
+  Covering.intervalPoly option
 
 val get_unsat_cover : t -> res
-(*
-  let t = create () in
-  let x = create_variable t "x" in
-  let y = create_variable t "y" in
-  let p = Term.(add t (variable x) (variable y)) in
-  let q = Term.(mul t (variable x) (variable y)) in
-  assert_eq t p q; (* p = q *)
-  assert_neq t p q; (* p <> q *)
-  solve t
-*)
 
 type solve_result =
   | Sat of (Polynomes.Var.t * Real.t) list  (** The problem is satisfiable. *)

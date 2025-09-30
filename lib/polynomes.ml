@@ -39,9 +39,6 @@ let of_int ctx z =
   in
   Libpoly.Polynomial.of_list ~ctx:ctx.poly_ctx [ m ]
 
-let one ctx = of_int ctx Z.one
-let zero ctx = of_int ctx Z.zero
-
 module Assignment = struct
   type t = (Libpoly.Variable.t * Real.t) list
 
@@ -66,11 +63,6 @@ end
 
 
 
-let equal = P.Context.equal
-
-let create_monomial ctx coeff vars =
-  P.Monomial.create ~ctx:ctx.poly_ctx coeff vars
-
 let evaluate ctx t a = P.evaluate t @@ Assignment.to_libpoly_assignment ctx a
 let sgn ctx t a = P.sgn t @@ Assignment.to_libpoly_assignment ctx a
 
@@ -82,8 +74,6 @@ let resultant ctx p q =
   P.resultant ~ctx:ctx.poly_ctx p q
 
 let gcd ctx p1 p2 = P.gcd ~ctx:ctx.poly_ctx p1 p2
-let of_list ctx monomials = P.of_list ~ctx:ctx.poly_ctx monomials
-let fold = P.fold
 let create_simple ctx = P.create_simple ~ctx:ctx.poly_ctx
 
 let create ctx =
@@ -113,8 +103,8 @@ let rec mult_list_polynomes ctx (n : int) (l : t list) : t =
 
 let factor_square_free =   P.factor_square_free
 
-let mul_factor_square_free ctx p = 
- let arr_p_int = factor_square_free  p in 
+let mul_factor_square_free ctx p =
+ let arr_p_int = factor_square_free  p in
  let arr_p = Array.map (fun x -> let (q,_) = x in q ) arr_p_int in mult_list_polynomes ctx 1 (Array.to_list arr_p)
 
 
@@ -149,7 +139,7 @@ let mk_assignment (variables : Var.t list) (l : int list) : Assignment.t =
   in
   Assignment.of_list l
 
- 
+
 
 let mk_monomes ctx (variables : Var.t list) ((coeff, degres) : int * int list) =
   let l =
@@ -164,14 +154,14 @@ let mk_monomes ctx (variables : Var.t list) ((coeff, degres) : int * int list) =
 
 (*
 let degres_array = Array.of_list degres in
-let n = List.length degres in 
+let n = List.length degres in
   let rec loop i acc =
-  if i >= n then acc else 
-    if (degres_array.(i) = 0) then (loop (i + 1) acc)  
-    
-    else loop (i + 1) 
+  if i >= n then acc else
+    if (degres_array.(i) = 0) then (loop (i + 1) acc)
+
+    else loop (i + 1)
               ((create_simple (Libpoly.Integer.of_z (Z.of_int 1))    (create_variable (i + 1)) degres_array.(i)) :: acc )
-  in let l = loop 0 [] in 
+  in let l = loop 0 [] in
   mult_list_polynomes coeff l*)
 
 module Set = struct
