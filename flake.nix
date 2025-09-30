@@ -15,10 +15,12 @@
       {
         packages = rec {
           default = ocamlPackages.buildDunePackage {
-            pname = "nra-solver";
+            pname = "nra_solver";
             version = "dev";
 
             src = ./.;
+
+            doCheck = true;
 
             buildInputs = [
               libpoly_bindings
@@ -58,13 +60,15 @@
 
         formatter = pkgs.nixpkgs-fmt;
 
+        checks.default = self.packages.${system}.default;
+
         devShells.default = pkgs.mkShell {
-          packages = with ocamlPackages; [
+          packages = [ pkgs.gnumake ] ++ (with ocamlPackages; [
             utop
             odoc
             ocaml-lsp
             patdiff
-          ];
+          ]);
 
           inputsFrom = [ self.packages.${system}.default ];
         };

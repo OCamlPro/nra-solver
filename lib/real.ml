@@ -27,19 +27,6 @@ module Dyadic_rational = Libpoly.Dyadic_rational
 module Ring = Libpoly.Ring
 module AlgebraicNumber = Libpoly.AlgebraicNumber
 
-(* --- Define global context components --- *)
-let var_db = Var.Db.create ()
-let var_order = Var.Order.create ()
-
-(* Define the polynomial context using the created db and order *)
-let poly_ctx =
-  Libpoly.Polynomial.Context.create
-    ~ring:Ring.lp_Z (* Use the default integer ring *)
-    var_db var_order
-(* ---------------------------------------- *)
-
-type real = t
-
 let view = view
 let sgn = sgn
 let of_int = of_int
